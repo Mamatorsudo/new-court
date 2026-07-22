@@ -57,6 +57,16 @@ h1 { font-size: 1.25rem; font-weight: 600; }
   padding: 0 15px;
 }
 
+/* Section Header */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 /* Stats Bar */
 .stats-grid {
   display: grid;
@@ -140,11 +150,22 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 
+.btn-edit {
+  background-color: #f59e0b;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-right: 4px;
+}
+
 .btn-danger {
   background-color: var(--danger);
   color: white;
   border: none;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 6px;
   font-size: 0.8rem;
   cursor: pointer;
@@ -231,6 +252,11 @@ th {
   font-weight: bold;
 }
 
+.action-btns {
+  display: flex;
+  gap: 4px;
+}
+
 /* Modal */
 .modal {
   position: fixed;
@@ -238,9 +264,10 @@ th {
   background: rgba(0,0,0,0.5);
   display: flex; justify-content: center; align-items: center;
   padding: 15px;
+  z-index: 100;
 }
 
-.modal-content { max-width: 400px; width: 100%; }
+.modal-content { max-width: 450px; width: 100%; }
 .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
 
 @media (min-width: 640px) {

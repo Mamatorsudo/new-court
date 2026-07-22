@@ -96,7 +96,10 @@
     <section class="card">
       <div class="section-header">
         <h2>📋 Case Directory</h2>
-        <button class="btn-secondary" onclick="fetchCases()">Refresh</button>
+        <div>
+          <button class="btn-secondary" onclick="exportToCSV()">📥 Export to Excel</button>
+          <button class="btn-secondary" onclick="fetchCases()">🔄 Refresh</button>
+        </div>
       </div>
 
       <!-- Navigation Tabs -->
@@ -132,7 +135,7 @@
               <th>Desk Time</th>
               <th>Next Hearing</th>
               <th>Details</th>
-              <th id="actions-header" style="display: none;">Actions</th>
+              <th class="actions-header" style="display: none;">Actions</th>
             </tr>
           </thead>
           <tbody id="cases-body">
@@ -162,6 +165,54 @@
         <div class="modal-actions">
           <button type="submit" class="btn-primary">Sign In</button>
           <button type="button" class="btn-secondary" onclick="closeLoginModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDIT CASE MODAL -->
+  <div id="edit-modal" class="modal" style="display: none;">
+    <div class="modal-content card">
+      <h3>✏️ Edit Case Record</h3>
+      <form id="edit-case-form" onsubmit="handleUpdateCase(event)">
+        <input type="hidden" id="edit-case-id" />
+        
+        <div style="margin-bottom: 10px;">
+          <label>Case Number</label>
+          <input type="text" id="edit-case-num" required />
+        </div>
+        <div style="margin-bottom: 10px;">
+          <label>Case Title</label>
+          <input type="text" id="edit-title" required />
+        </div>
+        <div style="margin-bottom: 10px;">
+          <label>Category</label>
+          <select id="edit-category" required>
+            <option value="Civil">⚖️ Civil</option>
+            <option value="Criminal">🚨 Criminal</option>
+          </select>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <label>Status</label>
+          <select id="edit-status" required>
+            <option value="Pending">Pending</option>
+            <option value="In Trial">In Trial</option>
+            <option value="Dismissed">Dismissed</option>
+            <option value="Closed">Closed</option>
+          </select>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <label>Next Hearing Date</label>
+          <input type="date" id="edit-hearing-date" required />
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label>Case Details / Summary</label>
+          <textarea id="edit-details" rows="3"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save Changes</button>
+          <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
         </div>
       </form>
     </div>

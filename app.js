@@ -8,6 +8,7 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let userRole = "public";
 let allCases = [];
+let currentlyFilteredCases = [];
 let currentTab = "all";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -41,7 +42,7 @@ function updateUIState() {
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
   const adminPanel = document.getElementById("admin-panel");
-  const actionsHeader = document.getElementById("actions-header");
+  const actionHeaders = document.querySelectorAll(".actions-header");
 
   if (currentUser) {
     userDisplay.innerText = `${currentUser.email} (${userRole.toUpperCase()})`;
@@ -54,15 +55,15 @@ function updateUIState() {
       if (adminPanel) adminPanel.style.display = "none";
     }
 
-    if (actionsHeader) {
-      actionsHeader.style.display = userRole === "judge" ? "table-cell" : "none";
-    }
+    actionHeaders.forEach(el => {
+      el.style.display = (userRole === "judge" || userRole === "staff") ? "table-cell" : "none";
+    });
   } else {
     userDisplay.innerText = "Public View";
     if (loginBtn) loginBtn.style.display = "inline-block";
     if (logoutBtn) logoutBtn.style.display = "none";
     if (adminPanel) adminPanel.style.display = "none";
-    if (actionsHeader) actionsHeader.style.display = "none";
+    actionHeaders.forEach(el => el.style.display = "none");
   }
 }
 
@@ -116,11 +117,10 @@ function filterCases() {
   const searchTerm = document.getElementById("search-input").value.toLowerCase();
   const statusFilter = document.getElementById("filter-status").value;
 
-  const filtered = allCases.filter(c => {
+  currentlyFilteredCases = allCases.filter(c => {
     const daysOnDesk = calculateDeskTimeDays(c.created_at);
     const categoryMatch = c.category || "Civil";
 
-    // Tab Filtering
     let matchesTab = true;
     if (currentTab === "Civil") matchesTab = categoryMatch === "Civil";
     else if (currentTab === "Criminal") matchesTab = categoryMatch === "Criminal";
@@ -128,19 +128,17 @@ function filterCases() {
     else if (currentTab === "archived") matchesTab = c.status === "Closed" || c.status === "Dismissed";
     else if (currentTab === "all") matchesTab = c.status !== "Closed" && c.status !== "Dismissed";
 
-    // Text Search
     const matchesSearch = 
       (c.case_number && c.case_number.toLowerCase().includes(searchTerm)) ||
       (c.title && c.title.toLowerCase().includes(searchTerm)) ||
       (c.details && c.details.toLowerCase().includes(searchTerm));
 
-    // Status Dropdown Filter
     const matchesStatus = (statusFilter === "ALL") || (c.status === statusFilter);
 
     return matchesTab && matchesSearch && matchesStatus;
   });
 
-  renderCasesTable(filtered);
+  renderCasesTable(currentlyFilteredCases);
 }
 
 function renderCasesTable(casesToRender) {
@@ -159,6 +157,8 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
 
+    const canEditOrDelete = userRole === "judge" || userRole === "staff";
+
     tr.innerHTML = `
       <td><strong>${escapeHTML(item.case_number || '')}</strong></td>
       <td><span class="badge-category ${categoryBadgeClass}">${category === 'Criminal' ? '🚨 Criminal' : '⚖️ Civil'}</span></td>
@@ -167,7 +167,14 @@ function renderCasesTable(casesToRender) {
       <td><span class="badge-desk-time">⏱️ ${days} day${days === 1 ? '' : 's'}</span></td>
       <td>${item.next_hearing || 'N/A'}</td>
       <td>${escapeHTML(item.details || 'N/A')}</td>
-      ${userRole === "judge" ? `<td><button class="btn-danger" onclick="deleteCase('${item.id}')">Delete</button></td>` : ''}
+      ${canEditOrDelete ? `
+        <td>
+          <div class="action-btns">
+            <button class="btn-edit" onclick="openEditModal('${item.id}')">✏️ Edit</button>
+            ${userRole === "judge" ? `<button class="btn-danger" onclick="deleteCase('${item.id}')">🗑️ Delete</button>` : ''}
+          </div>
+        </td>
+      ` : ''}
     `;
     tbody.appendChild(tr);
   });
@@ -200,12 +207,89 @@ async function handleCreateCase(event) {
   }
 }
 
+// Edit Modal Functions
+function openEditModal(id) {
+  const item = allCases.find(c => c.id === id);
+  if (!item) return;
+
+  document.getElementById("edit-case-id").value = item.id;
+  document.getElementById("edit-case-num").value = item.case_number || "";
+  document.getElementById("edit-title").value = item.title || "";
+  document.getElementById("edit-category").value = item.category || "Civil";
+  document.getElementById("edit-status").value = item.status || "Pending";
+  document.getElementById("edit-hearing-date").value = item.next_hearing || "";
+  document.getElementById("edit-details").value = item.details || "";
+
+  document.getElementById("edit-modal").style.display = "flex";
+}
+
+function closeEditModal() {
+  document.getElementById("edit-modal").style.display = "none";
+}
+
+async function handleUpdateCase(event) {
+  event.preventDefault();
+
+  const id = document.getElementById("edit-case-id").value;
+  const case_number = document.getElementById("edit-case-num").value;
+  const title = document.getElementById("edit-title").value;
+  const category = document.getElementById("edit-category").value;
+  const status = document.getElementById("edit-status").value;
+  const next_hearing = document.getElementById("edit-hearing-date").value;
+  const details = document.getElementById("edit-details").value;
+
+  const { error } = await supabaseClient
+    .from("cases")
+    .update({ case_number, title, category, status, next_hearing, details })
+    .eq("id", id);
+
+  if (error) {
+    alert("Error updating case: " + error.message);
+  } else {
+    closeEditModal();
+    fetchCases();
+  }
+}
+
 async function deleteCase(id) {
-  if (!confirm("Are you sure you want to delete this case?")) return;
+  if (!confirm("Are you sure you want to permanently delete this case?")) return;
 
   const { error } = await supabaseClient.from("cases").delete().eq("id", id);
   if (error) alert("Error deleting case: " + error.message);
   else fetchCases();
+}
+
+// EXPORT TO EXCEL / CSV FUNCTION
+function exportToCSV() {
+  if (currentlyFilteredCases.length === 0) {
+    alert("No cases to export!");
+    return;
+  }
+
+  let csvContent = "data:text/csv;charset=utf-8,";
+  csvContent += "Case Number,Category,Title,Status,Next Hearing,Days on Desk,Details\n";
+
+  currentlyFilteredCases.forEach(c => {
+    const days = calculateDeskTimeDays(c.created_at);
+    const row = [
+      `"${c.case_number || ''}"`,
+      `"${c.category || 'Civil'}"`,
+      `"${c.title || ''}"`,
+      `"${c.status || ''}"`,
+      `"${c.next_hearing || ''}"`,
+      `"${days}"`,
+      `"${(c.details || '').replace(/"/g, '""')}"`
+    ].join(",");
+    csvContent += row + "\n";
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `Court_Cases_Report_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 async function handleLogin(event) {
@@ -239,6 +323,9 @@ function escapeHTML(str) { return String(str).replace(/[&<>'"]/g, tag => ({ '&':
 
 window.openLoginModal = openLoginModal;
 window.closeLoginModal = closeLoginModal;
+window.openEditModal = openEditModal;
+window.closeEditModal = closeEditModal;
+window.handleUpdateCase = handleUpdateCase;
 window.logout = logout;
 window.handleLogin = handleLogin;
 window.handleCreateCase = handleCreateCase;
@@ -246,3 +333,4 @@ window.fetchCases = fetchCases;
 window.filterCases = filterCases;
 window.switchTab = switchTab;
 window.deleteCase = deleteCase;
+window.exportToCSV = exportToCSV;
