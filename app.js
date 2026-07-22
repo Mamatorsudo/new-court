@@ -171,7 +171,7 @@ function renderCasesTable(casesToRender) {
         <td>
           <div class="action-btns">
             <button class="btn-edit" onclick="openEditModal('${item.id}')">✏️ Edit</button>
-            ${userRole === "judge" ? `<button class="btn-danger" onclick="deleteCase('${item.id}')">🗑️ Delete</button>` : ''}
+            <button class="btn-danger" onclick="deleteCase('${item.id}')">🗑️ Delete</button>
           </div>
         </td>
       ` : ''}
@@ -207,10 +207,14 @@ async function handleCreateCase(event) {
   }
 }
 
-// Edit Modal Functions
+// Fixed Edit Modal Functions
 function openEditModal(id) {
-  const item = allCases.find(c => c.id === id);
-  if (!item) return;
+  // Loose matching in case id is integer or string
+  const item = allCases.find(c => String(c.id) === String(id));
+  if (!item) {
+    alert("Could not find case data to edit.");
+    return;
+  }
 
   document.getElementById("edit-case-id").value = item.id;
   document.getElementById("edit-case-num").value = item.case_number || "";
