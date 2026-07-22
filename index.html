@@ -24,10 +24,30 @@
 
   <main class="container">
 
+    <!-- Overview Stats Bar -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-title">Total Active</span>
+        <span id="stat-total" class="stat-value">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">⚖️ Civil Cases</span>
+        <span id="stat-civil" class="stat-value">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-title">🚨 Criminal Cases</span>
+        <span id="stat-criminal" class="stat-value">0</span>
+      </div>
+      <div class="stat-card highlight">
+        <span class="stat-title">⏳ Desk Attention (>30 Days)</span>
+        <span id="stat-urgent" class="stat-value">0</span>
+      </div>
+    </section>
+
     <!-- Case Entry Section (Visible to Staff & Judge) -->
     <section id="admin-panel" class="card admin-section" style="display: none;">
       <h2>🧑‍⚖️ Case Management Panel</h2>
-      <p class="subtitle">Enter a new case into the tracking database.</p>
+      <p class="subtitle">Register a new case into the judicial system.</p>
 
       <form id="add-case-form" onsubmit="handleCreateCase(event)">
         
@@ -39,6 +59,13 @@
           <div>
             <label>Case Title</label>
             <input type="text" id="title" placeholder="e.g. State v. John Doe" required />
+          </div>
+          <div>
+            <label>Category</label>
+            <select id="category" required>
+              <option value="Civil">⚖️ Civil</option>
+              <option value="Criminal">🚨 Criminal</option>
+            </select>
           </div>
           <div>
             <label>Status</label>
@@ -55,10 +82,10 @@
           </div>
         </div>
 
-        <!-- Case Details / Notes Field -->
+        <!-- Case Details Field -->
         <div class="full-width-field">
           <label>Case Details / Summary</label>
-          <textarea id="details" rows="3" placeholder="Enter summary of allegations, evidence, or notes..."></textarea>
+          <textarea id="details" rows="3" placeholder="Enter summary of claims, charges, legal representation, or notes..."></textarea>
         </div>
 
         <button type="submit" class="btn-primary">Add Case</button>
@@ -68,13 +95,22 @@
     <!-- Public / Case List Section -->
     <section class="card">
       <div class="section-header">
-        <h2>📋 Registered Court Cases</h2>
+        <h2>📋 Case Directory</h2>
         <button class="btn-secondary" onclick="fetchCases()">Refresh</button>
       </div>
 
-      <!-- NEW SEARCH & FILTER BAR -->
+      <!-- Navigation Tabs -->
+      <div class="tabs-bar">
+        <button class="tab-btn active" onclick="switchTab('all', this)">All Cases</button>
+        <button class="tab-btn" onclick="switchTab('Civil', this)">⚖️ Civil</button>
+        <button class="tab-btn" onclick="switchTab('Criminal', this)">🚨 Criminal</button>
+        <button class="tab-btn" onclick="switchTab('urgent', this)">⚠️ Urgent (>30 Days)</button>
+        <button class="tab-btn" onclick="switchTab('archived', this)">📁 Disposed / Closed</button>
+      </div>
+
+      <!-- Search & Filter Bar -->
       <div class="search-bar-container">
-        <input type="text" id="search-input" placeholder="🔍 Search by Case #, Title, or Details..." oninput="filterCases()">
+        <input type="text" id="search-input" placeholder="🔍 Search by Case #, Title, or Summary..." oninput="filterCases()">
         <select id="filter-status" onchange="filterCases()">
           <option value="ALL">All Statuses</option>
           <option value="Pending">Pending</option>
@@ -84,15 +120,16 @@
         </select>
       </div>
 
-      <!-- Case List Table / Mobile Responsive Cards -->
+      <!-- Case List Table -->
       <div class="table-container">
         <table>
           <thead>
             <tr>
               <th>Case #</th>
+              <th>Category</th>
               <th>Title</th>
               <th>Status</th>
-              <th>Days on Desk</th>
+              <th>Desk Time</th>
               <th>Next Hearing</th>
               <th>Details</th>
               <th id="actions-header" style="display: none;">Actions</th>
@@ -100,7 +137,7 @@
           </thead>
           <tbody id="cases-body">
             <tr>
-              <td colspan="7" style="text-align: center;">Loading cases...</td>
+              <td colspan="8" style="text-align: center;">Loading cases...</td>
             </tr>
           </tbody>
         </table>

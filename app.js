@@ -1,16 +1,15 @@
-// 1. Credentials
+// Credentials
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tRv6XX3ylRgAcsFT2reMNQ_44evSTg1";
 
-// 2. Initialize Supabase
 const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
 let userRole = "public";
-let allCases = []; // Global cache for instant search filtering
+let allCases = [];
+let currentTab = "all";
 
-// Initialize Application
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
@@ -33,11 +32,7 @@ async function fetchUserRole(userId) {
     .eq("id", userId)
     .maybeSingle();
 
-  if (data && data.role) {
-    userRole = data.role;
-  } else {
-    userRole = "staff";
-  }
+  userRole = (data && data.role) ? data.role : "staff";
   updateUIState();
 }
 
@@ -71,20 +66,17 @@ function updateUIState() {
   }
 }
 
-// Calculate days on desk
-function calculateDeskTime(createdAt) {
-  if (!createdAt) return "0 days";
+function calculateDeskTimeDays(createdAt) {
+  if (!createdAt) return 0;
   const created = new Date(createdAt);
   const today = new Date();
-  const diffTime = Math.abs(today - created);
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  return `${diffDays} day${diffDays === 1 ? '' : 's'}`;
+  return Math.floor(Math.abs(today - created) / (1000 * 60 * 60 * 24));
 }
 
 async function fetchCases() {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
-  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Loading cases...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Loading cases...</td></tr>`;
 
   const { data: cases, error } = await supabaseClient
     .from("cases")
@@ -92,12 +84,63 @@ async function fetchCases() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="7">Error loading cases: ${escapeHTML(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8">Error loading cases: ${escapeHTML(error.message)}</td></tr>`;
     return;
   }
 
   allCases = cases || [];
-  renderCasesTable(allCases);
+  updateDashboardStats();
+  filterCases();
+}
+
+function updateDashboardStats() {
+  const activeCases = allCases.filter(c => c.status !== "Closed" && c.status !== "Dismissed");
+  const civilCount = activeCases.filter(c => c.category === "Civil").length;
+  const criminalCount = activeCases.filter(c => c.category === "Criminal").length;
+  const urgentCount = activeCases.filter(c => calculateDeskTimeDays(c.created_at) > 30).length;
+
+  document.getElementById("stat-total").innerText = activeCases.length;
+  document.getElementById("stat-civil").innerText = civilCount;
+  document.getElementById("stat-criminal").innerText = criminalCount;
+  document.getElementById("stat-urgent").innerText = urgentCount;
+}
+
+function switchTab(tabName, element) {
+  currentTab = tabName;
+  document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+  if (element) element.classList.add("active");
+  filterCases();
+}
+
+function filterCases() {
+  const searchTerm = document.getElementById("search-input").value.toLowerCase();
+  const statusFilter = document.getElementById("filter-status").value;
+
+  const filtered = allCases.filter(c => {
+    const daysOnDesk = calculateDeskTimeDays(c.created_at);
+    const categoryMatch = c.category || "Civil";
+
+    // Tab Filtering
+    let matchesTab = true;
+    if (currentTab === "Civil") matchesTab = categoryMatch === "Civil";
+    else if (currentTab === "Criminal") matchesTab = categoryMatch === "Criminal";
+    else if (currentTab === "urgent") matchesTab = daysOnDesk > 30 && c.status !== "Closed" && c.status !== "Dismissed";
+    else if (currentTab === "archived") matchesTab = c.status === "Closed" || c.status === "Dismissed";
+    else if (currentTab === "all") matchesTab = c.status !== "Closed" && c.status !== "Dismissed";
+
+    // Text Search
+    const matchesSearch = 
+      (c.case_number && c.case_number.toLowerCase().includes(searchTerm)) ||
+      (c.title && c.title.toLowerCase().includes(searchTerm)) ||
+      (c.details && c.details.toLowerCase().includes(searchTerm));
+
+    // Status Dropdown Filter
+    const matchesStatus = (statusFilter === "ALL") || (c.status === statusFilter);
+
+    return matchesTab && matchesSearch && matchesStatus;
+  });
+
+  renderCasesTable(filtered);
 }
 
 function renderCasesTable(casesToRender) {
@@ -105,45 +148,29 @@ function renderCasesTable(casesToRender) {
   if (!tbody) return;
 
   if (casesToRender.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No matching cases found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No matching cases found.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = "";
   casesToRender.forEach(item => {
     const tr = document.createElement("tr");
-    const deskTime = calculateDeskTime(item.created_at);
+    const days = calculateDeskTimeDays(item.created_at);
+    const category = item.category || "Civil";
+    const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
 
     tr.innerHTML = `
       <td><strong>${escapeHTML(item.case_number || '')}</strong></td>
+      <td><span class="badge-category ${categoryBadgeClass}">${category === 'Criminal' ? '🚨 Criminal' : '⚖️ Civil'}</span></td>
       <td>${escapeHTML(item.title || '')}</td>
-      <td><span style="font-weight:bold;">${escapeHTML(item.status || '')}</span></td>
-      <td><span class="badge-desk-time">⏱️ ${deskTime}</span></td>
+      <td><strong>${escapeHTML(item.status || '')}</strong></td>
+      <td><span class="badge-desk-time">⏱️ ${days} day${days === 1 ? '' : 's'}</span></td>
       <td>${item.next_hearing || 'N/A'}</td>
       <td>${escapeHTML(item.details || 'N/A')}</td>
       ${userRole === "judge" ? `<td><button class="btn-danger" onclick="deleteCase('${item.id}')">Delete</button></td>` : ''}
     `;
     tbody.appendChild(tr);
   });
-}
-
-// Search and Filter Functionality
-function filterCases() {
-  const searchTerm = document.getElementById("search-input").value.toLowerCase();
-  const statusFilter = document.getElementById("filter-status").value;
-
-  const filtered = allCases.filter(c => {
-    const matchesSearch = 
-      (c.case_number && c.case_number.toLowerCase().includes(searchTerm)) ||
-      (c.title && c.title.toLowerCase().includes(searchTerm)) ||
-      (c.details && c.details.toLowerCase().includes(searchTerm));
-
-    const matchesStatus = (statusFilter === "ALL") || (c.status === statusFilter);
-
-    return matchesSearch && matchesStatus;
-  });
-
-  renderCasesTable(filtered);
 }
 
 async function handleCreateCase(event) {
@@ -156,13 +183,14 @@ async function handleCreateCase(event) {
 
   const case_number = document.getElementById("case-num").value;
   const title = document.getElementById("title").value;
+  const category = document.getElementById("category").value;
   const status = document.getElementById("status").value;
   const next_hearing = document.getElementById("hearing-date").value;
   const details = document.getElementById("details").value;
 
   const { error } = await supabaseClient
     .from("cases")
-    .insert([{ case_number, title, status, next_hearing, details }]);
+    .insert([{ case_number, title, category, status, next_hearing, details }]);
 
   if (error) {
     alert("Error creating case: " + error.message);
@@ -216,4 +244,5 @@ window.handleLogin = handleLogin;
 window.handleCreateCase = handleCreateCase;
 window.fetchCases = fetchCases;
 window.filterCases = filterCases;
+window.switchTab = switchTab;
 window.deleteCase = deleteCase;
