@@ -222,15 +222,19 @@ async function handleCreateCase(event) {
   }
 }
 
-// Open Edit Modal
+// Open Edit Modal (Fixed matching logic)
 function openEditModal(id) {
   if (userRole !== "judge") {
     alert("Permission denied. Only Judge Bernice can edit cases.");
     return;
   }
 
-  const item = allCases.find(c => c.id === id);
-  if (!item) return;
+  // Flexible comparison handles string vs number IDs seamlessly
+  const item = allCases.find(c => String(c.id) === String(id));
+  if (!item) {
+    alert("Could not locate case record.");
+    return;
+  }
 
   document.getElementById("edit-case-id").value = item.id;
   document.getElementById("edit-case-num").value = item.case_number || "";
