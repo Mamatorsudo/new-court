@@ -1,7 +1,8 @@
-// Credentials
+// 1. Supabase Credentials
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tRv6XX3ylRgAcsFT2reMNQ_44evSTg1";
 
+// 2. Initialize Supabase
 const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -11,11 +12,13 @@ let allCases = [];
 let currentlyFilteredCases = [];
 let currentTab = "all";
 
+// Initialize App
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
 });
 
+// Check Logged-in User Session
 async function checkUserSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
@@ -26,6 +29,7 @@ async function checkUserSession() {
   }
 }
 
+// Fetch Role from Supabase 'profiles' table
 async function fetchUserRole(userId) {
   const { data } = await supabaseClient
     .from("profiles")
@@ -37,6 +41,7 @@ async function fetchUserRole(userId) {
   updateUIState();
 }
 
+// Control UI elements based on Role
 function updateUIState() {
   const userDisplay = document.getElementById("user-display");
   const loginBtn = document.getElementById("login-btn");
@@ -49,14 +54,16 @@ function updateUIState() {
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "inline-block";
 
+    // BOTH Staff and Judge can create cases
     if (userRole === "judge" || userRole === "staff") {
       if (adminPanel) adminPanel.style.display = "block";
     } else {
       if (adminPanel) adminPanel.style.display = "none";
     }
 
+    // ONLY JUDGE gets to see the Actions Column (Edit/Delete)
     actionHeaders.forEach(el => {
-      el.style.display = (userRole === "judge" || userRole === "staff") ? "table-cell" : "none";
+      el.style.display = (userRole === "judge") ? "table-cell" : "none";
     });
   } else {
     userDisplay.innerText = "Public View";
@@ -67,6 +74,7 @@ function updateUIState() {
   }
 }
 
+// Calculate Days on Desk
 function calculateDeskTimeDays(createdAt) {
   if (!createdAt) return 0;
   const created = new Date(createdAt);
@@ -74,6 +82,7 @@ function calculateDeskTimeDays(createdAt) {
   return Math.floor(Math.abs(today - created) / (1000 * 60 * 60 * 24));
 }
 
+// Fetch Cases from Supabase
 async function fetchCases() {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
@@ -94,6 +103,7 @@ async function fetchCases() {
   filterCases();
 }
 
+// Update Header Statistics
 function updateDashboardStats() {
   const activeCases = allCases.filter(c => c.status !== "Closed" && c.status !== "Dismissed");
   const civilCount = activeCases.filter(c => c.category === "Civil").length;
@@ -106,6 +116,7 @@ function updateDashboardStats() {
   document.getElementById("stat-urgent").innerText = urgentCount;
 }
 
+// Tab Switcher
 function switchTab(tabName, element) {
   currentTab = tabName;
   document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
@@ -113,6 +124,7 @@ function switchTab(tabName, element) {
   filterCases();
 }
 
+// Filter and Search Cases
 function filterCases() {
   const searchTerm = document.getElementById("search-input").value.toLowerCase();
   const statusFilter = document.getElementById("filter-status").value;
@@ -141,6 +153,7 @@ function filterCases() {
   renderCasesTable(currentlyFilteredCases);
 }
 
+// Render Cases Table
 function renderCasesTable(casesToRender) {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
@@ -157,7 +170,8 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
 
-    const canEditOrDelete = userRole === "judge" || userRole === "staff";
+    // ONLY JUDGE SEES EDIT & DELETE BUTTONS
+    const isJudge = userRole === "judge";
 
     tr.innerHTML = `
       <td><strong>${escapeHTML(item.case_number || '')}</strong></td>
@@ -167,7 +181,7 @@ function renderCasesTable(casesToRender) {
       <td><span class="badge-desk-time">⏱️ ${days} day${days === 1 ? '' : 's'}</span></td>
       <td>${item.next_hearing || 'N/A'}</td>
       <td>${escapeHTML(item.details || 'N/A')}</td>
-      ${canEditOrDelete ? `
+      ${isJudge ? `
         <td>
           <div class="action-btns">
             <button class="btn-edit" onclick="openEditModal('${item.id}')">✏️ Edit</button>
@@ -180,6 +194,7 @@ function renderCasesTable(casesToRender) {
   });
 }
 
+// Create New Case (Staff & Judge)
 async function handleCreateCase(event) {
   event.preventDefault();
   
@@ -207,14 +222,15 @@ async function handleCreateCase(event) {
   }
 }
 
-// Fixed Edit Modal Functions
+// Open Edit Modal
 function openEditModal(id) {
-  // Loose matching in case id is integer or string
-  const item = allCases.find(c => String(c.id) === String(id));
-  if (!item) {
-    alert("Could not find case data to edit.");
+  if (userRole !== "judge") {
+    alert("Permission denied. Only Judge Bernice can edit cases.");
     return;
   }
+
+  const item = allCases.find(c => c.id === id);
+  if (!item) return;
 
   document.getElementById("edit-case-id").value = item.id;
   document.getElementById("edit-case-num").value = item.case_number || "";
@@ -231,8 +247,14 @@ function closeEditModal() {
   document.getElementById("edit-modal").style.display = "none";
 }
 
+// Update Case (Strictly Judge Only)
 async function handleUpdateCase(event) {
   event.preventDefault();
+
+  if (userRole !== "judge") {
+    alert("Permission denied. Only Judge Bernice can edit cases.");
+    return;
+  }
 
   const id = document.getElementById("edit-case-id").value;
   const case_number = document.getElementById("edit-case-num").value;
@@ -255,7 +277,13 @@ async function handleUpdateCase(event) {
   }
 }
 
+// Delete Case (Strictly Judge Only)
 async function deleteCase(id) {
+  if (userRole !== "judge") {
+    alert("Permission denied. Only Judge Bernice can delete cases.");
+    return;
+  }
+
   if (!confirm("Are you sure you want to permanently delete this case?")) return;
 
   const { error } = await supabaseClient.from("cases").delete().eq("id", id);
@@ -263,7 +291,7 @@ async function deleteCase(id) {
   else fetchCases();
 }
 
-// EXPORT TO EXCEL / CSV FUNCTION
+// Export to Excel / CSV
 function exportToCSV() {
   if (currentlyFilteredCases.length === 0) {
     alert("No cases to export!");
@@ -296,6 +324,7 @@ function exportToCSV() {
   document.body.removeChild(link);
 }
 
+// Authentication Handlers
 async function handleLogin(event) {
   event.preventDefault();
   const email = document.getElementById("email").value;
