@@ -57,15 +57,6 @@ h1 { font-size: 1.25rem; font-weight: 600; }
   padding: 0 15px;
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -120,7 +111,7 @@ input, select, textarea {
   background-color: #fff;
 }
 
-/* Note: text-transform: uppercase removed to allow browser red spellcheck lines */
+/* Note: CSS text-transform removed so native browser red spellcheck lines are rendered */
 .uppercase-input {
   font-weight: 500;
 }

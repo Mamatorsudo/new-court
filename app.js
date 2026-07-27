@@ -1,8 +1,8 @@
-// 1. Supabase Credentials
+// Supabase Credentials
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tRv6XX3ylRgAcsFT2reMNQ_44evSTg1";
 
-// 2. Initialize Supabase
+// Initialize Supabase Client
 const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -12,7 +12,7 @@ let allCases = [];
 let currentlyFilteredCases = [];
 let currentTab = "all";
 
-// Dictionary for common legal typos auto-correction
+// Common legal dictionary auto-correction mapping
 const LEGAL_TYPO_DICTIONARY = {
   "ALEGED": "ALLEGED",
   "ALEGE": "ALLEGE",
@@ -29,46 +29,38 @@ const LEGAL_TYPO_DICTIONARY = {
   "FELONY": "FELONY"
 };
 
-// Initialize App
+// Application Initialization
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
   setupAutoSpellcheck();
 });
 
-// Auto-correct legal terms
+// Auto-correct mapped legal words
 function autoCorrectText(text) {
   if (!text) return "";
   let words = text.split(/(\s+)/);
   let correctedWords = words.map(word => {
     let upperWord = word.toUpperCase();
-    return LEGAL_TYPO_DICTIONARY[upperWord] || upperWord;
+    return LEGAL_TYPO_DICTIONARY[upperWord] || word;
   });
   return correctedWords.join("");
 }
 
-// Attach live input formatting & blur auto-correction
+// Setup spellcheck and uppercase formatting on change/blur
 function setupAutoSpellcheck() {
   document.querySelectorAll(".uppercase-input").forEach(input => {
-    // Force native browser spellcheck
     input.setAttribute("spellcheck", "true");
+    input.setAttribute("autocomplete", "on");
 
-    // Convert input to uppercase live as user types (keeps spellcheck active)
-    input.addEventListener("input", (e) => {
-      const start = e.target.selectionStart;
-      const end = e.target.selectionEnd;
-      e.target.value = e.target.value.toUpperCase();
-      e.target.setSelectionRange(start, end);
-    });
-
-    // Run custom dictionary corrector on blur (leaving input)
-    input.addEventListener("blur", (e) => {
-      e.target.value = autoCorrectText(e.target.value);
+    // Convert input value to upper case on change to preserve browser spellchecking while typing
+    input.addEventListener("change", (e) => {
+      e.target.value = autoCorrectText(e.target.value).toUpperCase();
     });
   });
 }
 
-// Check Logged-in User Session
+// Check logged-in Supabase session
 async function checkUserSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
@@ -91,7 +83,7 @@ async function fetchUserRole(userId) {
   updateUIState();
 }
 
-// Control UI elements based on Role
+// Update UI elements depending on authorization
 function updateUIState() {
   const userDisplay = document.getElementById("user-display");
   const loginBtn = document.getElementById("login-btn");
@@ -130,7 +122,7 @@ function calculateDeskTimeDays(createdAt) {
   return Math.floor(Math.abs(today - created) / (1000 * 60 * 60 * 24));
 }
 
-// Fetch Cases from Supabase
+// Fetch Cases from Supabase DB
 async function fetchCases() {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
@@ -151,7 +143,7 @@ async function fetchCases() {
   filterCases();
 }
 
-// Update Header Statistics
+// Update Top Dashboard Statistics
 function updateDashboardStats() {
   const activeCases = allCases.filter(c => c.status !== "Closed" && c.status !== "Dismissed");
   const civilCount = activeCases.filter(c => c.category === "Civil").length;
@@ -164,7 +156,7 @@ function updateDashboardStats() {
   document.getElementById("stat-urgent").innerText = urgentCount;
 }
 
-// Tab Switcher
+// Handle Category Tabs
 function switchTab(tabName, element) {
   currentTab = tabName;
   document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
@@ -172,7 +164,7 @@ function switchTab(tabName, element) {
   filterCases();
 }
 
-// Filter and Search Cases
+// Filter Cases
 function filterCases() {
   const searchTerm = document.getElementById("search-input").value.toLowerCase();
   const statusFilter = document.getElementById("filter-status").value;
@@ -201,7 +193,7 @@ function filterCases() {
   renderCasesTable(currentlyFilteredCases);
 }
 
-// Render Cases Table
+// Render Cases to DOM Table
 function renderCasesTable(casesToRender) {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
@@ -249,12 +241,12 @@ async function handleCreateCase(event) {
     return;
   }
 
-  const case_number = autoCorrectText(document.getElementById("case-num").value).trim();
-  const title = autoCorrectText(document.getElementById("title").value).trim();
+  const case_number = autoCorrectText(document.getElementById("case-num").value).toUpperCase().trim();
+  const title = autoCorrectText(document.getElementById("title").value).toUpperCase().trim();
   const category = document.getElementById("category").value;
   const status = document.getElementById("status").value;
   const next_hearing = document.getElementById("hearing-date").value;
-  const details = autoCorrectText(document.getElementById("details").value).trim();
+  const details = autoCorrectText(document.getElementById("details").value).toUpperCase().trim();
 
   const submitBtn = event.target.querySelector("button[type='submit']");
   submitBtn.disabled = true;
@@ -278,7 +270,7 @@ async function handleCreateCase(event) {
 // Open Edit Modal
 function openEditModal(id) {
   if (userRole !== "judge") {
-    alert("Permission denied. Only Judge Bernice can edit cases.");
+    alert("Permission denied. Only Judge can edit cases.");
     return;
   }
 
@@ -303,22 +295,22 @@ function closeEditModal() {
   document.getElementById("edit-modal").style.display = "none";
 }
 
-// Update Case
+// Update Case Record
 async function handleUpdateCase(event) {
   event.preventDefault();
 
   if (userRole !== "judge") {
-    alert("Permission denied. Only Judge Bernice can edit cases.");
+    alert("Permission denied. Only Judge can edit cases.");
     return;
   }
 
   const id = document.getElementById("edit-case-id").value;
-  const case_number = autoCorrectText(document.getElementById("edit-case-num").value).trim();
-  const title = autoCorrectText(document.getElementById("edit-title").value).trim();
+  const case_number = autoCorrectText(document.getElementById("edit-case-num").value).toUpperCase().trim();
+  const title = autoCorrectText(document.getElementById("edit-title").value).toUpperCase().trim();
   const category = document.getElementById("edit-category").value;
   const status = document.getElementById("edit-status").value;
   const next_hearing = document.getElementById("edit-hearing-date").value;
-  const details = autoCorrectText(document.getElementById("edit-details").value).trim();
+  const details = autoCorrectText(document.getElementById("edit-details").value).toUpperCase().trim();
 
   const submitBtn = event.target.querySelector("button[type='submit']");
   submitBtn.disabled = true;
@@ -343,7 +335,7 @@ async function handleUpdateCase(event) {
 // Delete Case
 async function deleteCase(id) {
   if (userRole !== "judge") {
-    alert("Permission denied. Only Judge Bernice can delete cases.");
+    alert("Permission denied. Only Judge can delete cases.");
     return;
   }
 
@@ -354,7 +346,7 @@ async function deleteCase(id) {
   else fetchCases();
 }
 
-// Export to CSV
+// Export to CSV File
 function exportToCSV() {
   if (currentlyFilteredCases.length === 0) {
     alert("No cases to export!");

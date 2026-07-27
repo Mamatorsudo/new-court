@@ -1,156 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Judicial Case Tracker</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Court Case Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
   <header>
     <div class="header-container">
-      <h1>⚖️ Judicial Case Tracker</h1>
+      <h1>⚖️ Court Case Tracker</h1>
       <div class="user-info">
-        <span id="user-display">Public View</span>
+        <span id="user-display">Loading session...</span>
         <button id="login-btn" class="btn-secondary" onclick="openLoginModal()">Login</button>
-        <button id="logout-btn" class="btn-secondary" onclick="logout()" style="display: none;">Logout</button>
+        <button id="logout-btn" class="btn-secondary" style="display:none;" onclick="logout()">Logout</button>
       </div>
     </div>
   </header>
 
-  <main class="container">
+  <div class="container">
 
-    <section class="stats-grid">
+    <div class="stats-grid">
       <div class="stat-card">
-        <span class="stat-title">Total Active</span>
+        <span class="stat-title">Active Cases</span>
         <span id="stat-total" class="stat-value">0</span>
       </div>
       <div class="stat-card">
-        <span class="stat-title">⚖️ Civil Cases</span>
+        <span class="stat-title">Civil Cases</span>
         <span id="stat-civil" class="stat-value">0</span>
       </div>
       <div class="stat-card">
-        <span class="stat-title">🚨 Criminal Cases</span>
+        <span class="stat-title">Criminal Cases</span>
         <span id="stat-criminal" class="stat-value">0</span>
       </div>
       <div class="stat-card highlight">
-        <span class="stat-title">⏳ Desk Attention (>30 Days)</span>
+        <span class="stat-title">Over 30 Days on Desk</span>
         <span id="stat-urgent" class="stat-value">0</span>
       </div>
-    </section>
+    </div>
 
-    <section id="admin-panel" class="card admin-section" style="display: none;">
-      <h2>🧑‍⚖️ Case Management Panel</h2>
-      <p class="subtitle">Register a new case into the judicial system.</p>
+    <div id="admin-panel" class="card" style="display: none;">
+      <h2>Add New Court Case</h2>
+      <p class="subtitle">Enter case information below. Native spellcheck is active.</p>
 
       <form id="add-case-form" onsubmit="handleCreateCase(event)">
-        
         <div class="form-grid">
           <div>
-            <label>Case Number</label>
-            <input type="text" id="case-num" class="uppercase-input" placeholder="e.g. CR-2026-004" spellcheck="true" autocorrect="on" required />
+            <label for="case-num">Case Number *</label>
+            <input 
+              type="text" 
+              id="case-num" 
+              class="uppercase-input" 
+              spellcheck="true" 
+              placeholder="e.g. CR-2026-001" 
+              required 
+            />
           </div>
+
           <div>
-            <label>Case Title</label>
-            <input type="text" id="title" class="uppercase-input" placeholder="e.g. State v. John Doe" spellcheck="true" autocorrect="on" required />
+            <label for="title">Case Title *</label>
+            <input 
+              type="text" 
+              id="title" 
+              class="uppercase-input" 
+              spellcheck="true" 
+              placeholder="e.g. State vs. John Doe" 
+              required 
+            />
           </div>
+
           <div>
-            <label>Category</label>
-            <select id="category" required>
-              <option value="Civil">⚖️ Civil</option>
-              <option value="Criminal">🚨 Criminal</option>
+            <label for="category">Category</label>
+            <select id="category">
+              <option value="Civil">Civil</option>
+              <option value="Criminal">Criminal</option>
             </select>
           </div>
+
           <div>
-            <label>Status</label>
-            <select id="status" required>
+            <label for="status">Status</label>
+            <select id="status">
               <option value="Pending">Pending</option>
-              <option value="In Trial">In Trial</option>
-              <option value="Dismissed">Dismissed</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Adjourned">Adjourned</option>
               <option value="Closed">Closed</option>
+              <option value="Dismissed">Dismissed</option>
             </select>
           </div>
+
           <div>
-            <label>Next Hearing Date</label>
-            <input type="date" id="hearing-date" required />
+            <label for="hearing-date">Next Hearing Date</label>
+            <input type="date" id="hearing-date" />
           </div>
         </div>
 
         <div class="full-width-field">
-          <label>Case Details / Summary</label>
-          <textarea id="details" rows="3" class="uppercase-input" placeholder="Enter summary of claims, charges, or notes..." spellcheck="true" autocorrect="on"></textarea>
+          <label for="details">Case Details / Notes</label>
+          <textarea 
+            id="details" 
+            class="uppercase-input" 
+            spellcheck="true" 
+            rows="3" 
+            placeholder="Type case notes here..."
+          ></textarea>
         </div>
 
         <button type="submit" class="btn-primary">Add Case</button>
       </form>
-    </section>
+    </div>
 
-    <section class="card">
-      <div class="section-header">
-        <h2>📋 Case Directory</h2>
-        <div>
-          <button class="btn-secondary" onclick="exportToCSV()">📥 Export to Excel</button>
-          <button class="btn-secondary" onclick="fetchCases()">🔄 Refresh</button>
+    <div class="tabs-bar">
+      <button class="tab-btn active" onclick="switchTab('all', this)">All Active</button>
+      <button class="tab-btn" onclick="switchTab('Civil', this)">Civil</button>
+      <button class="tab-btn" onclick="switchTab('Criminal', this)">Criminal</button>
+      <button class="tab-btn" onclick="switchTab('urgent', this)">⚠️ > 30 Days</button>
+      <button class="tab-btn" onclick="switchTab('archived', this)">Archived/Closed</button>
+    </div>
+
+    <div class="search-bar-container">
+      <input 
+        type="text" 
+        id="search-input" 
+        placeholder="Search case #, title, or details..." 
+        oninput="filterCases()" 
+      />
+      <select id="filter-status" onchange="filterCases()">
+        <option value="ALL">All Statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Adjourned">Adjourned</option>
+        <option value="Closed">Closed</option>
+        <option value="Dismissed">Dismissed</option>
+      </select>
+      <button class="btn-secondary" onclick="exportToCSV()">📥 Export CSV</button>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Case #</th>
+            <th>Category</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Desk Time</th>
+            <th>Next Hearing</th>
+            <th>Details</th>
+            <th class="actions-header" style="display:none;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="cases-body">
+          <tr>
+            <td colspan="8" style="text-align:center;">Loading cases...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div id="login-modal" class="modal" style="display:none;">
+    <div class="card modal-content">
+      <h2>Court Staff Login</h2>
+      <p class="subtitle">Log in to add or edit cases.</p>
+      <form onsubmit="handleLogin(event)">
+        <div style="margin-bottom:12px;">
+          <label for="email">Email</label>
+          <input type="email" id="email" required />
         </div>
-      </div>
-
-      <div class="tabs-bar">
-        <button class="tab-btn active" onclick="switchTab('all', this)">All Cases</button>
-        <button class="tab-btn" onclick="switchTab('Civil', this)">⚖️ Civil</button>
-        <button class="tab-btn" onclick="switchTab('Criminal', this)">🚨 Criminal</button>
-        <button class="tab-btn" onclick="switchTab('urgent', this)">⚠️ Urgent (>30 Days)</button>
-        <button class="tab-btn" onclick="switchTab('archived', this)">📁 Disposed / Closed</button>
-      </div>
-
-      <div class="search-bar-container">
-        <input type="text" id="search-input" placeholder="🔍 Search by Case #, Title, or Summary..." spellcheck="true" autocorrect="on" oninput="filterCases()">
-        <select id="filter-status" onchange="filterCases()">
-          <option value="ALL">All Statuses</option>
-          <option value="Pending">Pending</option>
-          <option value="In Trial">In Trial</option>
-          <option value="Dismissed">Dismissed</option>
-          <option value="Closed">Closed</option>
-        </select>
-      </div>
-
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Case #</th>
-              <th>Category</th>
-              <th>Title</th>
-              <th>Status</th>
-              <th>Desk Time</th>
-              <th>Next Hearing</th>
-              <th>Details</th>
-              <th class="actions-header" style="display: none;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="cases-body">
-            <tr>
-              <td colspan="8" style="text-align: center;">Loading cases...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-  </main>
-
-  <div id="login-modal" class="modal" style="display: none;">
-    <div class="modal-content card">
-      <h3>System Authentication</h3>
-      <form id="login-form" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <label for="email">Email / Identifier</label>
-          <input type="email" id="email" required placeholder="user@court.gov">
-        </div>
-        <div class="form-group">
+        <div style="margin-bottom:15px;">
           <label for="password">Password</label>
-          <input type="password" id="password" required>
+          <input type="password" id="password" required />
         </div>
         <div class="modal-actions">
           <button type="submit" class="btn-primary">Sign In</button>
@@ -160,45 +182,44 @@
     </div>
   </div>
 
-  <div id="edit-modal" class="modal" style="display: none;">
-    <div class="modal-content card">
-      <h3>✏️ Edit Case Record</h3>
-      <form id="edit-case-form" onsubmit="handleUpdateCase(event)">
+  <div id="edit-modal" class="modal" style="display:none;">
+    <div class="card modal-content">
+      <h2>Edit Court Case</h2>
+      <form onsubmit="handleUpdateCase(event)">
         <input type="hidden" id="edit-case-id" />
-        
-        <div style="margin-bottom: 10px;">
+        <div style="margin-bottom:10px;">
           <label>Case Number</label>
-          <input type="text" id="edit-case-num" class="uppercase-input" spellcheck="true" autocorrect="on" required />
+          <input type="text" id="edit-case-num" class="uppercase-input" spellcheck="true" required />
         </div>
-        <div style="margin-bottom: 10px;">
+        <div style="margin-bottom:10px;">
           <label>Case Title</label>
-          <input type="text" id="edit-title" class="uppercase-input" spellcheck="true" autocorrect="on" required />
+          <input type="text" id="edit-title" class="uppercase-input" spellcheck="true" required />
         </div>
-        <div style="margin-bottom: 10px;">
+        <div style="margin-bottom:10px;">
           <label>Category</label>
-          <select id="edit-category" required>
-            <option value="Civil">⚖️ Civil</option>
-            <option value="Criminal">🚨 Criminal</option>
+          <select id="edit-category">
+            <option value="Civil">Civil</option>
+            <option value="Criminal">Criminal</option>
           </select>
         </div>
-        <div style="margin-bottom: 10px;">
+        <div style="margin-bottom:10px;">
           <label>Status</label>
-          <select id="edit-status" required>
+          <select id="edit-status">
             <option value="Pending">Pending</option>
-            <option value="In Trial">In Trial</option>
-            <option value="Dismissed">Dismissed</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Adjourned">Adjourned</option>
             <option value="Closed">Closed</option>
+            <option value="Dismissed">Dismissed</option>
           </select>
         </div>
-        <div style="margin-bottom: 10px;">
+        <div style="margin-bottom:10px;">
           <label>Next Hearing Date</label>
-          <input type="date" id="edit-hearing-date" required />
+          <input type="date" id="edit-hearing-date" />
         </div>
-        <div style="margin-bottom: 15px;">
-          <label>Case Details / Summary</label>
-          <textarea id="edit-details" rows="3" class="uppercase-input" spellcheck="true" autocorrect="on"></textarea>
+        <div style="margin-bottom:15px;">
+          <label>Details</label>
+          <textarea id="edit-details" class="uppercase-input" spellcheck="true" rows="3"></textarea>
         </div>
-
         <div class="modal-actions">
           <button type="submit" class="btn-primary">Save Changes</button>
           <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
