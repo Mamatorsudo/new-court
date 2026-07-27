@@ -54,14 +54,12 @@ function updateUIState() {
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "inline-block";
 
-    // BOTH Staff and Judge can create cases
     if (userRole === "judge" || userRole === "staff") {
       if (adminPanel) adminPanel.style.display = "block";
     } else {
       if (adminPanel) adminPanel.style.display = "none";
     }
 
-    // ONLY JUDGE gets to see the Actions Column (Edit/Delete)
     actionHeaders.forEach(el => {
       el.style.display = (userRole === "judge") ? "table-cell" : "none";
     });
@@ -170,7 +168,6 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
 
-    // ONLY JUDGE SEES EDIT & DELETE BUTTONS
     const isJudge = userRole === "judge";
 
     tr.innerHTML = `

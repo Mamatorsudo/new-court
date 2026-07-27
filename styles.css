@@ -57,11 +57,6 @@ h1 { font-size: 1.25rem; font-weight: 600; }
   padding: 0 15px;
 }
 
-/* Uppercase Text inputs with native spellchecker support */
-.caps-input {
-  text-transform: uppercase;
-}
-
 /* Section Header */
 .section-header {
   display: flex;
@@ -125,6 +120,11 @@ input, select, textarea {
   border: 1px solid var(--border);
   font-size: 0.95rem;
   background-color: #fff;
+}
+
+/* Transforms text to visually show as uppercase while preserving live browser spellchecking */
+.uppercase-input {
+  text-transform: uppercase;
 }
 
 input:focus, select:focus, textarea:focus {
