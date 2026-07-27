@@ -57,6 +57,11 @@ h1 { font-size: 1.25rem; font-weight: 600; }
   padding: 0 15px;
 }
 
+/* Uppercase Text inputs with native spellchecker support */
+.caps-input {
+  text-transform: uppercase;
+}
+
 /* Section Header */
 .section-header {
   display: flex;

@@ -174,13 +174,13 @@ function renderCasesTable(casesToRender) {
     const isJudge = userRole === "judge";
 
     tr.innerHTML = `
-      <td><strong>${escapeHTML(item.case_number || '')}</strong></td>
+      <td><strong>${escapeHTML((item.case_number || '').toUpperCase())}</strong></td>
       <td><span class="badge-category ${categoryBadgeClass}">${category === 'Criminal' ? '🚨 Criminal' : '⚖️ Civil'}</span></td>
-      <td>${escapeHTML(item.title || '')}</td>
+      <td>${escapeHTML((item.title || '').toUpperCase())}</td>
       <td><strong>${escapeHTML(item.status || '')}</strong></td>
       <td><span class="badge-desk-time">⏱️ ${days} day${days === 1 ? '' : 's'}</span></td>
       <td>${item.next_hearing || 'N/A'}</td>
-      <td>${escapeHTML(item.details || 'N/A')}</td>
+      <td>${escapeHTML((item.details || 'N/A').toUpperCase())}</td>
       ${isJudge ? `
         <td>
           <div class="action-btns">
@@ -203,16 +203,24 @@ async function handleCreateCase(event) {
     return;
   }
 
-  const case_number = document.getElementById("case-num").value;
-  const title = document.getElementById("title").value;
+  const case_number = document.getElementById("case-num").value.toUpperCase().trim();
+  const title = document.getElementById("title").value.toUpperCase().trim();
   const category = document.getElementById("category").value;
   const status = document.getElementById("status").value;
   const next_hearing = document.getElementById("hearing-date").value;
-  const details = document.getElementById("details").value;
+  const details = document.getElementById("details").value.toUpperCase().trim();
+
+  // Prevent Double Submissions
+  const submitBtn = event.target.querySelector("button[type='submit']");
+  submitBtn.disabled = true;
+  submitBtn.innerText = "SAVING...";
 
   const { error } = await supabaseClient
     .from("cases")
     .insert([{ case_number, title, category, status, next_hearing, details }]);
+
+  submitBtn.disabled = false;
+  submitBtn.innerText = "Add Case";
 
   if (error) {
     alert("Error creating case: " + error.message);
@@ -222,14 +230,13 @@ async function handleCreateCase(event) {
   }
 }
 
-// Open Edit Modal (Fixed matching logic)
+// Open Edit Modal
 function openEditModal(id) {
   if (userRole !== "judge") {
     alert("Permission denied. Only Judge Bernice can edit cases.");
     return;
   }
 
-  // Flexible comparison handles string vs number IDs seamlessly
   const item = allCases.find(c => String(c.id) === String(id));
   if (!item) {
     alert("Could not locate case record.");
@@ -237,12 +244,12 @@ function openEditModal(id) {
   }
 
   document.getElementById("edit-case-id").value = item.id;
-  document.getElementById("edit-case-num").value = item.case_number || "";
-  document.getElementById("edit-title").value = item.title || "";
+  document.getElementById("edit-case-num").value = (item.case_number || "").toUpperCase();
+  document.getElementById("edit-title").value = (item.title || "").toUpperCase();
   document.getElementById("edit-category").value = item.category || "Civil";
   document.getElementById("edit-status").value = item.status || "Pending";
   document.getElementById("edit-hearing-date").value = item.next_hearing || "";
-  document.getElementById("edit-details").value = item.details || "";
+  document.getElementById("edit-details").value = (item.details || "").toUpperCase();
 
   document.getElementById("edit-modal").style.display = "flex";
 }
@@ -261,17 +268,24 @@ async function handleUpdateCase(event) {
   }
 
   const id = document.getElementById("edit-case-id").value;
-  const case_number = document.getElementById("edit-case-num").value;
-  const title = document.getElementById("edit-title").value;
+  const case_number = document.getElementById("edit-case-num").value.toUpperCase().trim();
+  const title = document.getElementById("edit-title").value.toUpperCase().trim();
   const category = document.getElementById("edit-category").value;
   const status = document.getElementById("edit-status").value;
   const next_hearing = document.getElementById("edit-hearing-date").value;
-  const details = document.getElementById("edit-details").value;
+  const details = document.getElementById("edit-details").value.toUpperCase().trim();
+
+  const submitBtn = event.target.querySelector("button[type='submit']");
+  submitBtn.disabled = true;
+  submitBtn.innerText = "SAVING...";
 
   const { error } = await supabaseClient
     .from("cases")
     .update({ case_number, title, category, status, next_hearing, details })
     .eq("id", id);
+
+  submitBtn.disabled = false;
+  submitBtn.innerText = "Save Changes";
 
   if (error) {
     alert("Error updating case: " + error.message);
@@ -308,13 +322,13 @@ function exportToCSV() {
   currentlyFilteredCases.forEach(c => {
     const days = calculateDeskTimeDays(c.created_at);
     const row = [
-      `"${c.case_number || ''}"`,
+      `"${(c.case_number || '').toUpperCase()}"`,
       `"${c.category || 'Civil'}"`,
-      `"${c.title || ''}"`,
+      `"${(c.title || '').toUpperCase()}"`,
       `"${c.status || ''}"`,
       `"${c.next_hearing || ''}"`,
       `"${days}"`,
-      `"${(c.details || '').replace(/"/g, '""')}"`
+      `"${(c.details || '').toUpperCase().replace(/"/g, '""')}"`
     ].join(",");
     csvContent += row + "\n";
   });
