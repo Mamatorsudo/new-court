@@ -12,11 +12,51 @@ let allCases = [];
 let currentlyFilteredCases = [];
 let currentTab = "all";
 
+// Dictionary for automatic spellcheck and auto-correction
+const LEGAL_TYPO_DICTIONARY = {
+  "ALEGED": "ALLEGED",
+  "ALEGE": "ALLEGE",
+  "ALEGEDLY": "ALLEGEDLY",
+  "PLAINTIF": "PLAINTIFF",
+  "DEFENDAT": "DEFENDANT",
+  "DEFENDENT": "DEFENDANT",
+  "CRIMNAL": "CRIMINAL",
+  "JUDGMEN": "JUDGMENT",
+  "JUDGEMENT": "JUDGMENT",
+  "OFFENCE": "OFFENSE",
+  "HERING": "HEARING",
+  "MISDEMENOR": "MISDEMEANOR",
+  "FELONY": "FELONY"
+};
+
 // Initialize App
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
+
+  // Attach live spellcheck & auto-correct listeners to all uppercase input fields
+  setupAutoSpellcheck();
 });
+
+// Auto-correct function
+function autoCorrectText(text) {
+  if (!text) return "";
+  let words = text.split(/(\s+)/); // Split keeping spaces
+  let correctedWords = words.map(word => {
+    let upperWord = word.toUpperCase();
+    return LEGAL_TYPO_DICTIONARY[upperWord] || upperWord;
+  });
+  return correctedWords.join("");
+}
+
+// Attach live auto-correct events to inputs
+function setupAutoSpellcheck() {
+  document.querySelectorAll(".uppercase-input").forEach(input => {
+    input.addEventListener("blur", (e) => {
+      e.target.value = autoCorrectText(e.target.value);
+    });
+  });
+}
 
 // Check Logged-in User Session
 async function checkUserSession() {
@@ -200,12 +240,12 @@ async function handleCreateCase(event) {
     return;
   }
 
-  const case_number = document.getElementById("case-num").value.toUpperCase().trim();
-  const title = document.getElementById("title").value.toUpperCase().trim();
+  const case_number = autoCorrectText(document.getElementById("case-num").value).trim();
+  const title = autoCorrectText(document.getElementById("title").value).trim();
   const category = document.getElementById("category").value;
   const status = document.getElementById("status").value;
   const next_hearing = document.getElementById("hearing-date").value;
-  const details = document.getElementById("details").value.toUpperCase().trim();
+  const details = autoCorrectText(document.getElementById("details").value).trim();
 
   // Prevent Double Submissions
   const submitBtn = event.target.querySelector("button[type='submit']");
@@ -265,12 +305,12 @@ async function handleUpdateCase(event) {
   }
 
   const id = document.getElementById("edit-case-id").value;
-  const case_number = document.getElementById("edit-case-num").value.toUpperCase().trim();
-  const title = document.getElementById("edit-title").value.toUpperCase().trim();
+  const case_number = autoCorrectText(document.getElementById("edit-case-num").value).trim();
+  const title = autoCorrectText(document.getElementById("edit-title").value).trim();
   const category = document.getElementById("edit-category").value;
   const status = document.getElementById("edit-status").value;
   const next_hearing = document.getElementById("edit-hearing-date").value;
-  const details = document.getElementById("edit-details").value.toUpperCase().trim();
+  const details = autoCorrectText(document.getElementById("edit-details").value).trim();
 
   const submitBtn = event.target.querySelector("button[type='submit']");
   submitBtn.disabled = true;

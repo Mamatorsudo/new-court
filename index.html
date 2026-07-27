@@ -50,11 +50,11 @@
         <div class="form-grid">
           <div>
             <label>Case Number</label>
-            <input type="text" id="case-num" class="uppercase-input" placeholder="e.g. CR-2026-004" spellcheck="true" required />
+            <input type="text" id="case-num" class="uppercase-input" placeholder="e.g. CR-2026-004" spellcheck="true" autocorrect="on" required />
           </div>
           <div>
             <label>Case Title</label>
-            <input type="text" id="title" class="uppercase-input" placeholder="e.g. State v. John Doe" spellcheck="true" required />
+            <input type="text" id="title" class="uppercase-input" placeholder="e.g. State v. John Doe" spellcheck="true" autocorrect="on" required />
           </div>
           <div>
             <label>Category</label>
@@ -80,7 +80,7 @@
 
         <div class="full-width-field">
           <label>Case Details / Summary</label>
-          <textarea id="details" rows="3" class="uppercase-input" placeholder="Enter summary of claims, charges, or notes..." spellcheck="true"></textarea>
+          <textarea id="details" rows="3" class="uppercase-input" placeholder="Enter summary of claims, charges, or notes..." spellcheck="true" autocorrect="on"></textarea>
         </div>
 
         <button type="submit" class="btn-primary">Add Case</button>
@@ -105,7 +105,7 @@
       </div>
 
       <div class="search-bar-container">
-        <input type="text" id="search-input" placeholder="🔍 Search by Case #, Title, or Summary..." spellcheck="true" oninput="filterCases()">
+        <input type="text" id="search-input" placeholder="🔍 Search by Case #, Title, or Summary..." spellcheck="true" autocorrect="on" oninput="filterCases()">
         <select id="filter-status" onchange="filterCases()">
           <option value="ALL">All Statuses</option>
           <option value="Pending">Pending</option>
@@ -168,11 +168,11 @@
         
         <div style="margin-bottom: 10px;">
           <label>Case Number</label>
-          <input type="text" id="edit-case-num" class="uppercase-input" spellcheck="true" required />
+          <input type="text" id="edit-case-num" class="uppercase-input" spellcheck="true" autocorrect="on" required />
         </div>
         <div style="margin-bottom: 10px;">
           <label>Case Title</label>
-          <input type="text" id="edit-title" class="uppercase-input" spellcheck="true" required />
+          <input type="text" id="edit-title" class="uppercase-input" spellcheck="true" autocorrect="on" required />
         </div>
         <div style="margin-bottom: 10px;">
           <label>Category</label>
@@ -196,7 +196,7 @@
         </div>
         <div style="margin-bottom: 15px;">
           <label>Case Details / Summary</label>
-          <textarea id="edit-details" rows="3" class="uppercase-input" spellcheck="true"></textarea>
+          <textarea id="edit-details" rows="3" class="uppercase-input" spellcheck="true" autocorrect="on"></textarea>
         </div>
 
         <div class="modal-actions">

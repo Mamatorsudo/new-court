@@ -122,7 +122,7 @@ input, select, textarea {
   background-color: #fff;
 }
 
-/* Transforms text to visually show as uppercase while preserving live browser spellchecking */
+/* Visual uppercase display */
 .uppercase-input {
   text-transform: uppercase;
 }
