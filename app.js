@@ -12,7 +12,7 @@ let allCases = [];
 let currentlyFilteredCases = [];
 let currentTab = "all";
 
-// Dictionary for automatic spellcheck and auto-correction
+// Dictionary for common legal typos auto-correction
 const LEGAL_TYPO_DICTIONARY = {
   "ALEGED": "ALLEGED",
   "ALEGE": "ALLEGE",
@@ -33,15 +33,13 @@ const LEGAL_TYPO_DICTIONARY = {
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
-
-  // Attach live spellcheck & auto-correct listeners to all uppercase input fields
   setupAutoSpellcheck();
 });
 
-// Auto-correct function
+// Auto-correct legal terms
 function autoCorrectText(text) {
   if (!text) return "";
-  let words = text.split(/(\s+)/); // Split keeping spaces
+  let words = text.split(/(\s+)/);
   let correctedWords = words.map(word => {
     let upperWord = word.toUpperCase();
     return LEGAL_TYPO_DICTIONARY[upperWord] || upperWord;
@@ -49,9 +47,21 @@ function autoCorrectText(text) {
   return correctedWords.join("");
 }
 
-// Attach live auto-correct events to inputs
+// Attach live input formatting & blur auto-correction
 function setupAutoSpellcheck() {
   document.querySelectorAll(".uppercase-input").forEach(input => {
+    // Force native browser spellcheck
+    input.setAttribute("spellcheck", "true");
+
+    // Convert input to uppercase live as user types (keeps spellcheck active)
+    input.addEventListener("input", (e) => {
+      const start = e.target.selectionStart;
+      const end = e.target.selectionEnd;
+      e.target.value = e.target.value.toUpperCase();
+      e.target.setSelectionRange(start, end);
+    });
+
+    // Run custom dictionary corrector on blur (leaving input)
     input.addEventListener("blur", (e) => {
       e.target.value = autoCorrectText(e.target.value);
     });
@@ -207,7 +217,6 @@ function renderCasesTable(casesToRender) {
     const days = calculateDeskTimeDays(item.created_at);
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
-
     const isJudge = userRole === "judge";
 
     tr.innerHTML = `
@@ -231,10 +240,10 @@ function renderCasesTable(casesToRender) {
   });
 }
 
-// Create New Case (Staff & Judge)
+// Create New Case
 async function handleCreateCase(event) {
   event.preventDefault();
-  
+
   if (userRole !== "judge" && userRole !== "staff") {
     alert("Permission denied.");
     return;
@@ -247,7 +256,6 @@ async function handleCreateCase(event) {
   const next_hearing = document.getElementById("hearing-date").value;
   const details = autoCorrectText(document.getElementById("details").value).trim();
 
-  // Prevent Double Submissions
   const submitBtn = event.target.querySelector("button[type='submit']");
   submitBtn.disabled = true;
   submitBtn.innerText = "SAVING...";
@@ -295,7 +303,7 @@ function closeEditModal() {
   document.getElementById("edit-modal").style.display = "none";
 }
 
-// Update Case (Strictly Judge Only)
+// Update Case
 async function handleUpdateCase(event) {
   event.preventDefault();
 
@@ -332,7 +340,7 @@ async function handleUpdateCase(event) {
   }
 }
 
-// Delete Case (Strictly Judge Only)
+// Delete Case
 async function deleteCase(id) {
   if (userRole !== "judge") {
     alert("Permission denied. Only Judge Bernice can delete cases.");
@@ -346,7 +354,7 @@ async function deleteCase(id) {
   else fetchCases();
 }
 
-// Export to Excel / CSV
+// Export to CSV
 function exportToCSV() {
   if (currentlyFilteredCases.length === 0) {
     alert("No cases to export!");
