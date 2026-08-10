@@ -83,6 +83,19 @@ async function fetchUserRole(userId) {
   updateUIState();
 }
 
+// Helper permission checks
+function isMasterClark() {
+  return currentUser && currentUser.email && currentUser.email.toLowerCase() === "masterclark@gmail.com";
+}
+
+function canUserEdit() {
+  return userRole === "judge" || isMasterClark();
+}
+
+function canUserDelete() {
+  return userRole === "judge";
+}
+
 // Update UI elements depending on authorization
 function updateUIState() {
   const userDisplay = document.getElementById("user-display");
@@ -96,14 +109,16 @@ function updateUIState() {
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "inline-block";
 
-    if (userRole === "judge" || userRole === "staff") {
+    // Judge, Staff, and Master Clark can add cases
+    if (userRole === "judge" || userRole === "staff" || isMasterClark()) {
       if (adminPanel) adminPanel.style.display = "block";
     } else {
       if (adminPanel) adminPanel.style.display = "none";
     }
 
+    // Only Judge and Master Clark see the Actions column header
     actionHeaders.forEach(el => {
-      el.style.display = (userRole === "judge") ? "table-cell" : "none";
+      el.style.display = canUserEdit() ? "table-cell" : "none";
     });
   } else {
     userDisplay.innerText = "Public View";
@@ -209,7 +224,10 @@ function renderCasesTable(casesToRender) {
     const days = calculateDeskTimeDays(item.created_at);
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
-    const isJudge = userRole === "judge";
+
+    // Permissions logic
+    const showActions = canUserEdit();
+    const showDelete = canUserDelete();
 
     tr.innerHTML = `
       <td><strong>${escapeHTML((item.case_number || '').toUpperCase())}</strong></td>
@@ -219,11 +237,11 @@ function renderCasesTable(casesToRender) {
       <td><span class="badge-desk-time">⏱️ ${days} day${days === 1 ? '' : 's'}</span></td>
       <td>${item.next_hearing || 'N/A'}</td>
       <td>${escapeHTML((item.details || 'N/A').toUpperCase())}</td>
-      ${isJudge ? `
+      ${showActions ? `
         <td>
           <div class="action-btns">
             <button class="btn-edit" onclick="openEditModal('${item.id}')">✏️ Edit</button>
-            <button class="btn-danger" onclick="deleteCase('${item.id}')">🗑️ Delete</button>
+            ${showDelete ? `<button class="btn-danger" onclick="deleteCase('${item.id}')">🗑️ Delete</button>` : ''}
           </div>
         </td>
       ` : ''}
@@ -236,7 +254,7 @@ function renderCasesTable(casesToRender) {
 async function handleCreateCase(event) {
   event.preventDefault();
 
-  if (userRole !== "judge" && userRole !== "staff") {
+  if (userRole !== "judge" && userRole !== "staff" && !isMasterClark()) {
     alert("Permission denied.");
     return;
   }
@@ -269,8 +287,8 @@ async function handleCreateCase(event) {
 
 // Open Edit Modal
 function openEditModal(id) {
-  if (userRole !== "judge") {
-    alert("Permission denied. Only Judge can edit cases.");
+  if (!canUserEdit()) {
+    alert("Permission denied. Only the Judge and Master Clark can edit cases.");
     return;
   }
 
@@ -299,8 +317,8 @@ function closeEditModal() {
 async function handleUpdateCase(event) {
   event.preventDefault();
 
-  if (userRole !== "judge") {
-    alert("Permission denied. Only Judge can edit cases.");
+  if (!canUserEdit()) {
+    alert("Permission denied. Only the Judge and Master Clark can edit cases.");
     return;
   }
 
@@ -334,8 +352,8 @@ async function handleUpdateCase(event) {
 
 // Delete Case
 async function deleteCase(id) {
-  if (userRole !== "judge") {
-    alert("Permission denied. Only Judge can delete cases.");
+  if (!canUserDelete()) {
+    alert("Permission denied. Only the Judge can delete cases.");
     return;
   }
 
