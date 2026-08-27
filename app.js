@@ -1,6 +1,7 @@
 // 1. Supabase Credentials
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_tRv6XX3ylRgAcsFT2reMNQ_44evSTg1";
+// Paste your actual anon public key here
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzd2tmeGZheG9xaHV1eXdrZW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjIxOTksImV4cCI6MjEwMDIzODE5OX0.rH5NCxJbDJofqS2umI1osVb_EN2Upb2X9qBLKGzy354";
 
 // 2. Initialize Supabase
 const { createClient } = window.supabase;
