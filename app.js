@@ -1,8 +1,8 @@
-// Supabase Credentials
+// 1. Supabase Credentials
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tRv6XX3ylRgAcsFT2reMNQ_44evSTg1";
 
-// Initialize Supabase Client
+// 2. Initialize Supabase
 const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -12,55 +12,23 @@ let allCases = [];
 let currentlyFilteredCases = [];
 let currentTab = "all";
 
-// Common legal dictionary auto-correction mapping
-const LEGAL_TYPO_DICTIONARY = {
-  "ALEGED": "ALLEGED",
-  "ALEGE": "ALLEGE",
-  "ALEGEDLY": "ALLEGEDLY",
-  "PLAINTIF": "PLAINTIFF",
-  "DEFENDAT": "DEFENDANT",
-  "DEFENDENT": "DEFENDANT",
-  "CRIMNAL": "CRIMINAL",
-  "JUDGMEN": "JUDGMENT",
-  "JUDGEMENT": "JUDGMENT",
-  "OFFENCE": "OFFENSE",
-  "HERING": "HEARING",
-  "MISDEMENOR": "MISDEMEANOR",
-  "FELONY": "FELONY"
-};
+// List of statuses considered "Completed/Archived"
+const ARCHIVED_STATUSES = [
+  "Closed",
+  "Dismissed",
+  "Struck Out",
+  "Convicted",
+  "Judgment Delivered",
+  "Consent Judgment"
+];
 
-// Application Initialization
+// Initialize App
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
-  setupAutoSpellcheck();
 });
 
-// Auto-correct mapped legal words
-function autoCorrectText(text) {
-  if (!text) return "";
-  let words = text.split(/(\s+)/);
-  let correctedWords = words.map(word => {
-    let upperWord = word.toUpperCase();
-    return LEGAL_TYPO_DICTIONARY[upperWord] || word;
-  });
-  return correctedWords.join("");
-}
-
-// Setup spellcheck and uppercase formatting on change/blur
-function setupAutoSpellcheck() {
-  document.querySelectorAll(".uppercase-input").forEach(input => {
-    input.setAttribute("spellcheck", "true");
-    input.setAttribute("autocomplete", "on");
-
-    // Convert input value to upper case on change to preserve browser spellchecking while typing
-    input.addEventListener("change", (e) => {
-      e.target.value = autoCorrectText(e.target.value).toUpperCase();
-    });
-  });
-}
-
-// Check logged-in Supabase session
+// Check Logged-in User Session
 async function checkUserSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
@@ -83,20 +51,7 @@ async function fetchUserRole(userId) {
   updateUIState();
 }
 
-// Helper permission checks
-function isMasterClark() {
-  return currentUser && currentUser.email && currentUser.email.toLowerCase() === "masterclark@gmail.com";
-}
-
-function canUserEdit() {
-  return userRole === "judge" || isMasterClark();
-}
-
-function canUserDelete() {
-  return userRole === "judge";
-}
-
-// Update UI elements depending on authorization
+// Control UI elements based on Role
 function updateUIState() {
   const userDisplay = document.getElementById("user-display");
   const loginBtn = document.getElementById("login-btn");
@@ -109,16 +64,16 @@ function updateUIState() {
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "inline-block";
 
-    // Judge, Staff, and Master Clark can add cases
-    if (userRole === "judge" || userRole === "staff" || isMasterClark()) {
+    // BOTH Staff and Judge can create cases
+    if (userRole === "judge" || userRole === "staff") {
       if (adminPanel) adminPanel.style.display = "block";
     } else {
       if (adminPanel) adminPanel.style.display = "none";
     }
 
-    // Only Judge and Master Clark see the Actions column header
+    // ONLY JUDGE gets to see the Actions Column (Edit/Delete)
     actionHeaders.forEach(el => {
-      el.style.display = canUserEdit() ? "table-cell" : "none";
+      el.style.display = (userRole === "judge") ? "table-cell" : "none";
     });
   } else {
     userDisplay.innerText = "Public View";
@@ -137,7 +92,7 @@ function calculateDeskTimeDays(createdAt) {
   return Math.floor(Math.abs(today - created) / (1000 * 60 * 60 * 24));
 }
 
-// Fetch Cases from Supabase DB
+// Fetch Cases from Supabase
 async function fetchCases() {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
@@ -158,9 +113,9 @@ async function fetchCases() {
   filterCases();
 }
 
-// Update Top Dashboard Statistics
+// Update Header Statistics
 function updateDashboardStats() {
-  const activeCases = allCases.filter(c => c.status !== "Closed" && c.status !== "Dismissed");
+  const activeCases = allCases.filter(c => !ARCHIVED_STATUSES.includes(c.status));
   const civilCount = activeCases.filter(c => c.category === "Civil").length;
   const criminalCount = activeCases.filter(c => c.category === "Criminal").length;
   const urgentCount = activeCases.filter(c => calculateDeskTimeDays(c.created_at) > 30).length;
@@ -171,7 +126,7 @@ function updateDashboardStats() {
   document.getElementById("stat-urgent").innerText = urgentCount;
 }
 
-// Handle Category Tabs
+// Tab Switcher
 function switchTab(tabName, element) {
   currentTab = tabName;
   document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
@@ -179,7 +134,7 @@ function switchTab(tabName, element) {
   filterCases();
 }
 
-// Filter Cases
+// Filter and Search Cases
 function filterCases() {
   const searchTerm = document.getElementById("search-input").value.toLowerCase();
   const statusFilter = document.getElementById("filter-status").value;
@@ -187,13 +142,14 @@ function filterCases() {
   currentlyFilteredCases = allCases.filter(c => {
     const daysOnDesk = calculateDeskTimeDays(c.created_at);
     const categoryMatch = c.category || "Civil";
+    const isArchived = ARCHIVED_STATUSES.includes(c.status);
 
     let matchesTab = true;
-    if (currentTab === "Civil") matchesTab = categoryMatch === "Civil";
-    else if (currentTab === "Criminal") matchesTab = categoryMatch === "Criminal";
-    else if (currentTab === "urgent") matchesTab = daysOnDesk > 30 && c.status !== "Closed" && c.status !== "Dismissed";
-    else if (currentTab === "archived") matchesTab = c.status === "Closed" || c.status === "Dismissed";
-    else if (currentTab === "all") matchesTab = c.status !== "Closed" && c.status !== "Dismissed";
+    if (currentTab === "Civil") matchesTab = categoryMatch === "Civil" && !isArchived;
+    else if (currentTab === "Criminal") matchesTab = categoryMatch === "Criminal" && !isArchived;
+    else if (currentTab === "urgent") matchesTab = daysOnDesk > 30 && !isArchived;
+    else if (currentTab === "archived") matchesTab = isArchived;
+    else if (currentTab === "all") matchesTab = !isArchived;
 
     const matchesSearch = 
       (c.case_number && c.case_number.toLowerCase().includes(searchTerm)) ||
@@ -208,7 +164,7 @@ function filterCases() {
   renderCasesTable(currentlyFilteredCases);
 }
 
-// Render Cases to DOM Table
+// Render Cases Table
 function renderCasesTable(casesToRender) {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
@@ -225,23 +181,22 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
 
-    // Permissions logic
-    const showActions = canUserEdit();
-    const showDelete = canUserDelete();
+    // ONLY JUDGE SEES EDIT & DELETE BUTTONS
+    const isJudge = userRole === "judge";
 
     tr.innerHTML = `
-      <td><strong>${escapeHTML((item.case_number || '').toUpperCase())}</strong></td>
+      <td><strong>${escapeHTML(item.case_number || '')}</strong></td>
       <td><span class="badge-category ${categoryBadgeClass}">${category === 'Criminal' ? '🚨 Criminal' : '⚖️ Civil'}</span></td>
-      <td>${escapeHTML((item.title || '').toUpperCase())}</td>
+      <td>${escapeHTML(item.title || '')}</td>
       <td><strong>${escapeHTML(item.status || '')}</strong></td>
       <td><span class="badge-desk-time">⏱️ ${days} day${days === 1 ? '' : 's'}</span></td>
       <td>${item.next_hearing || 'N/A'}</td>
-      <td>${escapeHTML((item.details || 'N/A').toUpperCase())}</td>
-      ${showActions ? `
+      <td>${escapeHTML(item.details || 'N/A')}</td>
+      ${isJudge ? `
         <td>
           <div class="action-btns">
             <button class="btn-edit" onclick="openEditModal('${item.id}')">✏️ Edit</button>
-            ${showDelete ? `<button class="btn-danger" onclick="deleteCase('${item.id}')">🗑️ Delete</button>` : ''}
+            <button class="btn-danger" onclick="deleteCase('${item.id}')">🗑️ Delete</button>
           </div>
         </td>
       ` : ''}
@@ -250,32 +205,25 @@ function renderCasesTable(casesToRender) {
   });
 }
 
-// Create New Case
+// Create New Case (Staff & Judge)
 async function handleCreateCase(event) {
   event.preventDefault();
-
-  if (userRole !== "judge" && userRole !== "staff" && !isMasterClark()) {
+  
+  if (userRole !== "judge" && userRole !== "staff") {
     alert("Permission denied.");
     return;
   }
 
-  const case_number = autoCorrectText(document.getElementById("case-num").value).toUpperCase().trim();
-  const title = autoCorrectText(document.getElementById("title").value).toUpperCase().trim();
+  const case_number = document.getElementById("case-num").value;
+  const title = document.getElementById("title").value;
   const category = document.getElementById("category").value;
   const status = document.getElementById("status").value;
   const next_hearing = document.getElementById("hearing-date").value;
-  const details = autoCorrectText(document.getElementById("details").value).toUpperCase().trim();
-
-  const submitBtn = event.target.querySelector("button[type='submit']");
-  submitBtn.disabled = true;
-  submitBtn.innerText = "SAVING...";
+  const details = document.getElementById("details").value;
 
   const { error } = await supabaseClient
     .from("cases")
     .insert([{ case_number, title, category, status, next_hearing, details }]);
-
-  submitBtn.disabled = false;
-  submitBtn.innerText = "Add Case";
 
   if (error) {
     alert("Error creating case: " + error.message);
@@ -285,10 +233,10 @@ async function handleCreateCase(event) {
   }
 }
 
-// Open Edit Modal
+// Open Edit Modal (Flexible matching logic)
 function openEditModal(id) {
-  if (!canUserEdit()) {
-    alert("Permission denied. Only the Judge and Master Clark can edit cases.");
+  if (userRole !== "judge") {
+    alert("Permission denied. Only Judge Bernice can edit cases.");
     return;
   }
 
@@ -299,12 +247,12 @@ function openEditModal(id) {
   }
 
   document.getElementById("edit-case-id").value = item.id;
-  document.getElementById("edit-case-num").value = (item.case_number || "").toUpperCase();
-  document.getElementById("edit-title").value = (item.title || "").toUpperCase();
+  document.getElementById("edit-case-num").value = item.case_number || "";
+  document.getElementById("edit-title").value = item.title || "";
   document.getElementById("edit-category").value = item.category || "Civil";
   document.getElementById("edit-status").value = item.status || "Pending";
   document.getElementById("edit-hearing-date").value = item.next_hearing || "";
-  document.getElementById("edit-details").value = (item.details || "").toUpperCase();
+  document.getElementById("edit-details").value = item.details || "";
 
   document.getElementById("edit-modal").style.display = "flex";
 }
@@ -313,34 +261,27 @@ function closeEditModal() {
   document.getElementById("edit-modal").style.display = "none";
 }
 
-// Update Case Record
+// Update Case (Strictly Judge Only)
 async function handleUpdateCase(event) {
   event.preventDefault();
 
-  if (!canUserEdit()) {
-    alert("Permission denied. Only the Judge and Master Clark can edit cases.");
+  if (userRole !== "judge") {
+    alert("Permission denied. Only Judge Bernice can edit cases.");
     return;
   }
 
   const id = document.getElementById("edit-case-id").value;
-  const case_number = autoCorrectText(document.getElementById("edit-case-num").value).toUpperCase().trim();
-  const title = autoCorrectText(document.getElementById("edit-title").value).toUpperCase().trim();
+  const case_number = document.getElementById("edit-case-num").value;
+  const title = document.getElementById("edit-title").value;
   const category = document.getElementById("edit-category").value;
   const status = document.getElementById("edit-status").value;
   const next_hearing = document.getElementById("edit-hearing-date").value;
-  const details = autoCorrectText(document.getElementById("edit-details").value).toUpperCase().trim();
-
-  const submitBtn = event.target.querySelector("button[type='submit']");
-  submitBtn.disabled = true;
-  submitBtn.innerText = "SAVING...";
+  const details = document.getElementById("edit-details").value;
 
   const { error } = await supabaseClient
     .from("cases")
     .update({ case_number, title, category, status, next_hearing, details })
     .eq("id", id);
-
-  submitBtn.disabled = false;
-  submitBtn.innerText = "Save Changes";
 
   if (error) {
     alert("Error updating case: " + error.message);
@@ -350,10 +291,10 @@ async function handleUpdateCase(event) {
   }
 }
 
-// Delete Case
+// Delete Case (Strictly Judge Only)
 async function deleteCase(id) {
-  if (!canUserDelete()) {
-    alert("Permission denied. Only the Judge can delete cases.");
+  if (userRole !== "judge") {
+    alert("Permission denied. Only Judge Bernice can delete cases.");
     return;
   }
 
@@ -364,7 +305,7 @@ async function deleteCase(id) {
   else fetchCases();
 }
 
-// Export to CSV File
+// Export to Excel / CSV
 function exportToCSV() {
   if (currentlyFilteredCases.length === 0) {
     alert("No cases to export!");
@@ -377,13 +318,13 @@ function exportToCSV() {
   currentlyFilteredCases.forEach(c => {
     const days = calculateDeskTimeDays(c.created_at);
     const row = [
-      `"${(c.case_number || '').toUpperCase()}"`,
+      `"${c.case_number || ''}"`,
       `"${c.category || 'Civil'}"`,
-      `"${(c.title || '').toUpperCase()}"`,
+      `"${c.title || ''}"`,
       `"${c.status || ''}"`,
       `"${c.next_hearing || ''}"`,
       `"${days}"`,
-      `"${(c.details || '').toUpperCase().replace(/"/g, '""')}"`
+      `"${(c.details || '').replace(/"/g, '""')}"`
     ].join(",");
     csvContent += row + "\n";
   });
