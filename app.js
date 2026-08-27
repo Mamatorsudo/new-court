@@ -64,14 +64,12 @@ function updateUIState() {
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "inline-block";
 
-    // BOTH Staff and Judge can create cases
     if (userRole === "judge" || userRole === "staff") {
       if (adminPanel) adminPanel.style.display = "block";
     } else {
       if (adminPanel) adminPanel.style.display = "none";
     }
 
-    // ONLY JUDGE gets to see the Actions Column (Edit/Delete)
     actionHeaders.forEach(el => {
       el.style.display = (userRole === "judge") ? "table-cell" : "none";
     });
@@ -180,8 +178,6 @@ function renderCasesTable(casesToRender) {
     const days = calculateDeskTimeDays(item.created_at);
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
-
-    // ONLY JUDGE SEES EDIT & DELETE BUTTONS
     const isJudge = userRole === "judge";
 
     tr.innerHTML = `
@@ -205,7 +201,7 @@ function renderCasesTable(casesToRender) {
   });
 }
 
-// Create New Case (Staff & Judge)
+// Create New Case
 async function handleCreateCase(event) {
   event.preventDefault();
   
@@ -233,7 +229,7 @@ async function handleCreateCase(event) {
   }
 }
 
-// Open Edit Modal (Flexible matching logic)
+// Open Edit Modal
 function openEditModal(id) {
   if (userRole !== "judge") {
     alert("Permission denied. Only Judge Bernice can edit cases.");
@@ -261,7 +257,7 @@ function closeEditModal() {
   document.getElementById("edit-modal").style.display = "none";
 }
 
-// Update Case (Strictly Judge Only)
+// Update Case
 async function handleUpdateCase(event) {
   event.preventDefault();
 
@@ -291,7 +287,7 @@ async function handleUpdateCase(event) {
   }
 }
 
-// Delete Case (Strictly Judge Only)
+// Delete Case
 async function deleteCase(id) {
   if (userRole !== "judge") {
     alert("Permission denied. Only Judge Bernice can delete cases.");
@@ -305,7 +301,7 @@ async function deleteCase(id) {
   else fetchCases();
 }
 
-// Export to Excel / CSV
+// Export to CSV
 function exportToCSV() {
   if (currentlyFilteredCases.length === 0) {
     alert("No cases to export!");
@@ -338,7 +334,7 @@ function exportToCSV() {
   document.body.removeChild(link);
 }
 
-// Authentication Handlers
+// Auth Logic
 async function handleLogin(event) {
   event.preventDefault();
   const email = document.getElementById("email").value;
