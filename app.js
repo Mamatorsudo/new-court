@@ -1,8 +1,7 @@
-// 1. Supabase Credentials
+// 1. Supabase Initialization
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInRefiI6InZzd2tmeGZheG9xaHV1eXdrZW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjIxOTksImV4cCI6MjEwMDIzODE5OX0.rH5NCxJbDJofqS2umI1osVb_EN2Upb2X9qBLKGzy354";
 
-// 2. Initialize Supabase
 const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -12,34 +11,28 @@ let allCases = [];
 let currentlyFilteredCases = [];
 let currentTab = "all";
 
-// List of statuses considered "Completed/Archived"
 const ARCHIVED_STATUSES = [
-  "Closed",
-  "Dismissed",
-  "Struck Out",
-  "Convicted",
-  "Judgment Delivered",
-  "Consent Judgment"
+  "Closed", "Dismissed", "Struck Out", 
+  "Convicted", "Judgment Delivered", "Consent Judgment"
 ];
 
-// Initialize App
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
 });
 
-// Check Logged-in User Session
+// Check Session & Role
 async function checkUserSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     currentUser = session.user;
     await fetchUserRole(currentUser.id);
   } else {
+    userRole = "public";
     updateUIState();
   }
 }
 
-// Fetch Role from Supabase 'profiles' table
 async function fetchUserRole(userId) {
   const { data } = await supabaseClient
     .from("profiles")
@@ -47,12 +40,11 @@ async function fetchUserRole(userId) {
     .eq("id", userId)
     .maybeSingle();
 
-  // Normalize role string safely
   userRole = (data && data.role) ? data.role.toLowerCase().trim() : "staff";
   updateUIState();
 }
 
-// Control UI elements based on Role
+// UI Visibility Controls
 function updateUIState() {
   const userDisplay = document.getElementById("user-display");
   const loginBtn = document.getElementById("login-btn");
@@ -60,23 +52,16 @@ function updateUIState() {
   const adminPanel = document.getElementById("admin-panel");
   const actionHeaders = document.querySelectorAll(".actions-header");
 
-  // ALL logged-in users (Judge, Clerk, Master Clerk, Staff) can edit/add
-  const canEdit = currentUser !== null;
+  const isStaff = currentUser !== null; // Clerks, Master Clerks, Staff, Judges
 
   if (currentUser) {
-    userDisplay.innerText = `${currentUser.email} (${userRole.toUpperCase()})`;
+    if (userDisplay) userDisplay.innerText = `${currentUser.email} (${userRole.toUpperCase()})`;
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "inline-block";
-
-    if (adminPanel) {
-      adminPanel.style.display = canEdit ? "block" : "none";
-    }
-
-    actionHeaders.forEach(el => {
-      el.style.display = canEdit ? "table-cell" : "none";
-    });
+    if (adminPanel) adminPanel.style.display = isStaff ? "block" : "none";
+    actionHeaders.forEach(el => el.style.display = isStaff ? "table-cell" : "none");
   } else {
-    userDisplay.innerText = "Public View";
+    if (userDisplay) userDisplay.innerText = "Public View";
     if (loginBtn) loginBtn.style.display = "inline-block";
     if (logoutBtn) logoutBtn.style.display = "none";
     if (adminPanel) adminPanel.style.display = "none";
@@ -84,7 +69,6 @@ function updateUIState() {
   }
 }
 
-// Calculate Days on Desk
 function calculateDeskTimeDays(createdAt) {
   if (!createdAt) return 0;
   const created = new Date(createdAt);
@@ -92,7 +76,7 @@ function calculateDeskTimeDays(createdAt) {
   return Math.floor(Math.abs(today - created) / (1000 * 60 * 60 * 24));
 }
 
-// Fetch Cases from Supabase
+// Fetch Cases
 async function fetchCases() {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
@@ -104,7 +88,7 @@ async function fetchCases() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="8">Error loading cases: ${escapeHTML(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Error: ${escapeHTML(error.message)}</td></tr>`;
     return;
   }
 
@@ -113,25 +97,18 @@ async function fetchCases() {
   filterCases();
 }
 
-// Update Header Statistics
 function updateDashboardStats() {
   const activeCases = allCases.filter(c => !ARCHIVED_STATUSES.includes(c.status));
   const civilCount = activeCases.filter(c => c.category === "Civil").length;
   const criminalCount = activeCases.filter(c => c.category === "Criminal").length;
   const urgentCount = activeCases.filter(c => calculateDeskTimeDays(c.created_at) > 30).length;
 
-  const statTotal = document.getElementById("stat-total");
-  const statCivil = document.getElementById("stat-civil");
-  const statCriminal = document.getElementById("stat-criminal");
-  const statUrgent = document.getElementById("stat-urgent");
-
-  if (statTotal) statTotal.innerText = activeCases.length;
-  if (statCivil) statCivil.innerText = civilCount;
-  if (statCriminal) statCriminal.innerText = criminalCount;
-  if (statUrgent) statUrgent.innerText = urgentCount;
+  if (document.getElementById("stat-total")) document.getElementById("stat-total").innerText = activeCases.length;
+  if (document.getElementById("stat-civil")) document.getElementById("stat-civil").innerText = civilCount;
+  if (document.getElementById("stat-criminal")) document.getElementById("stat-criminal").innerText = criminalCount;
+  if (document.getElementById("stat-urgent")) document.getElementById("stat-urgent").innerText = urgentCount;
 }
 
-// Tab Switcher
 function switchTab(tabName, element) {
   currentTab = tabName;
   document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
@@ -139,7 +116,6 @@ function switchTab(tabName, element) {
   filterCases();
 }
 
-// Filter and Search Cases
 function filterCases() {
   const searchInput = document.getElementById("search-input");
   const filterStatusEl = document.getElementById("filter-status");
@@ -172,13 +148,13 @@ function filterCases() {
   renderCasesTable(currentlyFilteredCases);
 }
 
-// Render Cases Table
+// Render Table according to Role Permissions
 function renderCasesTable(casesToRender) {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
 
   if (casesToRender.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No matching cases found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No records found.</td></tr>`;
     return;
   }
 
@@ -189,9 +165,9 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
     
-    // EVERY authenticated user gets Edit permissions; ONLY Judge gets Delete
-    const canEdit = currentUser !== null;
-    const canDelete = userRole === "judge";
+    // Permission checks
+    const canEdit = currentUser !== null; // Clerks, Master Clerks, Staff & Judges can Edit
+    const canDelete = userRole === "judge"; // Only Judges can Delete
 
     tr.innerHTML = `
       <td><strong>${escapeHTML(item.case_number || '')}</strong></td>
@@ -214,14 +190,10 @@ function renderCasesTable(casesToRender) {
   });
 }
 
-// Create New Case
+// Add Case - Staff & Judges
 async function handleCreateCase(event) {
   event.preventDefault();
-  
-  if (!currentUser) {
-    alert("Permission denied. Please log in.");
-    return;
-  }
+  if (!currentUser) return alert("Public users cannot add records.");
 
   const case_number = document.getElementById("case-num").value;
   const title = document.getElementById("title").value;
@@ -235,25 +207,19 @@ async function handleCreateCase(event) {
     .insert([{ case_number, title, category, status, next_hearing, details }]);
 
   if (error) {
-    alert("Error creating case: " + error.message);
+    alert("Error saving record: " + error.message);
   } else {
     document.getElementById("add-case-form").reset();
     fetchCases();
   }
 }
 
-// Open Edit Modal
+// Edit Modal Handling
 function openEditModal(id) {
-  if (!currentUser) {
-    alert("Permission denied. Only logged-in users can edit cases.");
-    return;
-  }
+  if (!currentUser) return alert("Public users cannot edit records.");
 
   const item = allCases.find(c => String(c.id) === String(id));
-  if (!item) {
-    alert("Could not locate case record.");
-    return;
-  }
+  if (!item) return alert("Record not found.");
 
   document.getElementById("edit-case-id").value = item.id;
   document.getElementById("edit-case-num").value = item.case_number || "";
@@ -270,14 +236,9 @@ function closeEditModal() {
   document.getElementById("edit-modal").style.display = "none";
 }
 
-// Update Case
 async function handleUpdateCase(event) {
   event.preventDefault();
-
-  if (!currentUser) {
-    alert("Permission denied. Only logged-in users can edit cases.");
-    return;
-  }
+  if (!currentUser) return alert("Public users cannot update records.");
 
   const id = document.getElementById("edit-case-id").value;
   const case_number = document.getElementById("edit-case-num").value;
@@ -293,7 +254,7 @@ async function handleUpdateCase(event) {
     .eq("id", id);
 
   if (error) {
-    alert("Error updating case: " + error.message);
+    alert("Error updating record: " + error.message);
   } else {
     closeEditModal();
     fetchCases();
@@ -307,86 +268,45 @@ async function deleteCase(id) {
     return;
   }
 
-  if (!confirm("Are you sure you want to permanently delete this case?")) return;
+  if (!confirm("Confirm deletion?")) return;
 
   const { error } = await supabaseClient.from("cases").delete().eq("id", id);
-  if (error) alert("Error deleting case: " + error.message);
+  if (error) alert("Delete failed: " + error.message);
   else fetchCases();
 }
 
-// Export to CSV
-function exportToCSV() {
-  if (currentlyFilteredCases.length === 0) {
-    alert("No cases to export!");
-    return;
-  }
-
-  let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "Case Number,Category,Title,Status,Next Hearing,Days on Desk,Details\n";
-
-  currentlyFilteredCases.forEach(c => {
-    const days = calculateDeskTimeDays(c.created_at);
-    const row = [
-      `"${c.case_number || ''}"`,
-      `"${c.category || 'Civil'}"`,
-      `"${c.title || ''}"`,
-      `"${c.status || ''}"`,
-      `"${c.next_hearing || ''}"`,
-      `"${days}"`,
-      `"${(c.details || '').replace(/"/g, '""')}"`
-    ].join(",");
-    csvContent += row + "\n";
-  });
-
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `Court_Cases_Report_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-// Auth Logic
-async function handleLogin(event) {
-  event.preventDefault();
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    alert("Login failed: " + error.message);
-  } else {
-    currentUser = data.user;
-    closeLoginModal();
-    await fetchUserRole(currentUser.id);
-    fetchCases();
-  }
-}
-
-async function logout() {
-  await supabaseClient.auth.signOut();
-  currentUser = null;
-  userRole = "public";
-  updateUIState();
-  fetchCases();
-}
-
-function openLoginModal() { document.getElementById("login-modal").style.display = "flex"; }
-function closeLoginModal() { document.getElementById("login-modal").style.display = "none"; }
+// Mobile & Responsive Table CSS Support
 function escapeHTML(str) { return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); }
 
-window.openLoginModal = openLoginModal;
-window.closeLoginModal = closeLoginModal;
+window.openLoginModal = () => document.getElementById("login-modal").style.display = "flex";
+window.closeLoginModal = () => document.getElementById("login-modal").style.display = "none";
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.handleUpdateCase = handleUpdateCase;
-window.logout = logout;
-window.handleLogin = handleLogin;
 window.handleCreateCase = handleCreateCase;
 window.fetchCases = fetchCases;
 window.filterCases = filterCases;
 window.switchTab = switchTab;
 window.deleteCase = deleteCase;
-window.exportToCSV = exportToCSV;
+window.logout = async () => {
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  userRole = "public";
+  updateUIState();
+  fetchCases();
+};
+window.handleLogin = async (event) => {
+  event.preventDefault();
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    alert("Login failed: " + error.message);
+  } else {
+    currentUser = data.user;
+    window.closeLoginModal();
+    await fetchUserRole(currentUser.id);
+    fetchCases();
+  }
+};
