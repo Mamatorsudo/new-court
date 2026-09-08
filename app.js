@@ -1,6 +1,6 @@
 // 1. Supabase Credentials
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzd2tmeGZheG9xaHV1eXdrZW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjIxOTksImV4cCI6MjEwMDIzODE5OX0.rH5NCxJbDJofqS2umI1osVb_EN2Upb2X9qBLKGzy354";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInRefiI6InZzd2tmeGZheG9xaHV1eXdrZW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjIxOTksImV4cCI6MjEwMDIzODE5OX0.rH5NCxJbDJofqS2umI1osVb_EN2Upb2X9qBLKGzy354";
 
 // 2. Initialize Supabase
 const { createClient } = window.supabase;
@@ -47,8 +47,8 @@ async function fetchUserRole(userId) {
     .eq("id", userId)
     .maybeSingle();
 
-  // Default to "staff" if no specific role entry is found
-  userRole = (data && data.role) ? data.role : "staff";
+  // Normalize and clean role string
+  userRole = (data && data.role) ? data.role.toLowerCase().trim() : "staff";
   updateUIState();
 }
 
@@ -60,7 +60,8 @@ function updateUIState() {
   const adminPanel = document.getElementById("admin-panel");
   const actionHeaders = document.querySelectorAll(".actions-header");
 
-  const canEdit = userRole === "judge" || userRole === "staff";
+  // ALL logged-in users can edit; only non-logged-in users are "public"
+  const canEdit = currentUser !== null;
 
   if (currentUser) {
     userDisplay.innerText = `${currentUser.email} (${userRole.toUpperCase()})`;
@@ -182,8 +183,8 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
     
-    // Permission Checks: Both Judge and Staff can edit; ONLY Judge can delete
-    const canEdit = userRole === "judge" || userRole === "staff";
+    // Any logged-in user can edit; ONLY Judge can delete
+    const canEdit = currentUser !== null;
     const canDelete = userRole === "judge";
 
     tr.innerHTML = `
@@ -195,7 +196,7 @@ function renderCasesTable(casesToRender) {
       <td>${item.next_hearing || 'N/A'}</td>
       <td>${escapeHTML(item.details || 'N/A')}</td>
       ${canEdit ? `
-        <td>
+        <td class="action-cell">
           <div class="action-btns">
             <button class="btn-edit" onclick="openEditModal('${item.id}')">✏️ Edit</button>
             ${canDelete ? `<button class="btn-danger" onclick="deleteCase('${item.id}')">🗑️ Delete</button>` : ''}
@@ -211,8 +212,8 @@ function renderCasesTable(casesToRender) {
 async function handleCreateCase(event) {
   event.preventDefault();
   
-  if (userRole !== "judge" && userRole !== "staff") {
-    alert("Permission denied.");
+  if (!currentUser) {
+    alert("Permission denied. Please log in.");
     return;
   }
 
@@ -237,8 +238,8 @@ async function handleCreateCase(event) {
 
 // Open Edit Modal
 function openEditModal(id) {
-  if (userRole !== "judge" && userRole !== "staff") {
-    alert("Permission denied. Only authorized users can edit cases.");
+  if (!currentUser) {
+    alert("Permission denied. Only logged-in users can edit cases.");
     return;
   }
 
@@ -267,8 +268,8 @@ function closeEditModal() {
 async function handleUpdateCase(event) {
   event.preventDefault();
 
-  if (userRole !== "judge" && userRole !== "staff") {
-    alert("Permission denied. Only authorized users can edit cases.");
+  if (!currentUser) {
+    alert("Permission denied. Only logged-in users can edit cases.");
     return;
   }
 
