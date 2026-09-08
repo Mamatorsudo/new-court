@@ -1,6 +1,6 @@
-// 1. Correct Supabase Credentials
+// 1. Supabase Initialization
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzd2tmeGZheG9xaHV1eXdrZW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAxNTk4MDMsImV4cCI6MjA1NTczNTgwM30.73hUfXvS-0I3j2gPpx7yJ3z9a1M8O0x9C2G8N3T4V5W";
+const SUPABASE_ANON_KEY = "sb_publishable_tRv6XX3ylRgAcsFT2reMNQ_44evSTg1";
 
 const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -44,7 +44,7 @@ async function fetchUserRole(userId) {
   updateUIState();
 }
 
-// Enforce Visibility Policies
+// UI & Permissions Display
 function updateUIState() {
   const userDisplay = document.getElementById("user-display");
   const loginBtn = document.getElementById("login-btn");
@@ -52,7 +52,7 @@ function updateUIState() {
   const adminPanel = document.getElementById("admin-panel");
   const actionHeaders = document.querySelectorAll(".actions-header");
 
-  const isStaff = currentUser !== null; // Clerks, Master Clerks, Staff, Judges
+  const isStaff = currentUser !== null; // Staff, Clerks, Judges
 
   if (currentUser) {
     if (userDisplay) userDisplay.innerText = `${currentUser.email} (${userRole.toUpperCase()})`;
