@@ -1,4 +1,4 @@
-// 1. Supabase Initialization
+// 1. Supabase Credentials & Initialization
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_tRv6XX3ylRgAcsFT2reMNQ_44evSTg1";
 
@@ -19,6 +19,21 @@ const ARCHIVED_STATUSES = [
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
+
+  // Automatic Real-Time Auth Session & Token Listener
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+      currentUser = session ? session.user : null;
+      if (currentUser) {
+        await fetchUserRole(currentUser.id);
+      }
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      userRole = "public";
+      updateUIState();
+      fetchCases();
+    }
+  });
 });
 
 // Check Session & User Role
@@ -52,7 +67,7 @@ function updateUIState() {
   const adminPanel = document.getElementById("admin-panel");
   const actionHeaders = document.querySelectorAll(".actions-header");
 
-  const isStaff = currentUser !== null; // Staff, Clerks, Judges
+  const isStaff = currentUser !== null;
 
   if (currentUser) {
     if (userDisplay) userDisplay.innerText = `${currentUser.email} (${userRole.toUpperCase()})`;
@@ -165,7 +180,6 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
     
-    // Permission Rules: Staff/Clerks/Judges can edit; ONLY Judges can delete
     const canEdit = currentUser !== null;
     const canDelete = userRole === "judge";
 
@@ -193,7 +207,11 @@ function renderCasesTable(casesToRender) {
 // Add Case
 async function handleCreateCase(event) {
   event.preventDefault();
-  if (!currentUser) return alert("Public users cannot add cases.");
+  if (!currentUser) {
+    alert("Session expired. Please log in again.");
+    openLoginModal();
+    return;
+  }
 
   const case_number = document.getElementById("case-num").value;
   const title = document.getElementById("title").value;
@@ -216,7 +234,11 @@ async function handleCreateCase(event) {
 
 // Edit Modal Handling
 function openEditModal(id) {
-  if (!currentUser) return alert("Public users cannot edit cases.");
+  if (!currentUser) {
+    alert("Session expired. Please log in again.");
+    openLoginModal();
+    return;
+  }
 
   const item = allCases.find(c => String(c.id) === String(id));
   if (!item) return alert("Could not locate case record.");
@@ -238,7 +260,11 @@ function closeEditModal() {
 
 async function handleUpdateCase(event) {
   event.preventDefault();
-  if (!currentUser) return alert("Public users cannot update cases.");
+  if (!currentUser) {
+    alert("Session expired. Please log in again.");
+    openLoginModal();
+    return;
+  }
 
   const id = document.getElementById("edit-case-id").value;
   const case_number = document.getElementById("edit-case-num").value;
@@ -263,6 +289,12 @@ async function handleUpdateCase(event) {
 
 // Delete Case (Strictly Judge Only)
 async function deleteCase(id) {
+  if (!currentUser) {
+    alert("Session expired. Please log in again.");
+    openLoginModal();
+    return;
+  }
+
   if (userRole !== "judge") {
     alert("Permission denied. Only Judges can delete cases.");
     return;
