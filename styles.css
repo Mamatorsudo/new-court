@@ -1,4 +1,4 @@
-/* Base Styles */
+/* Base Reset */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -13,13 +13,12 @@ body {
   padding: 20px;
 }
 
-/* Container */
 .container {
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* Header & Auth bar */
+/* Header & Auth Nav */
 header {
   display: flex;
   justify-content: space-between;
@@ -37,7 +36,7 @@ header {
   gap: 12px;
 }
 
-/* Stats Cards */
+/* Dashboard Cards */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -65,12 +64,11 @@ header {
   color: #2c3e50;
 }
 
-/* Table Container for Cross-Platform Horizontal Scroll */
-.table-container,
-.table-responsive {
+/* Cross-Platform Table Container for iPhone & Mobile horizontal scrolling */
+.table-container {
   width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS Safari */
+  -webkit-overflow-scrolling: touch; /* Smooth inertia scroll on iOS Safari */
   background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -80,7 +78,7 @@ header {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px; /* Forces scroll bar on small screens instead of shrinking buttons */
+  min-width: 850px; /* Forces touch drag horizontal scroll on mobile devices */
 }
 
 th, td {
@@ -95,7 +93,7 @@ th {
   color: #4a5568;
 }
 
-/* Table Badges */
+/* Category Badges */
 .badge-category {
   padding: 4px 8px;
   border-radius: 4px;
@@ -121,9 +119,10 @@ th {
   font-size: 12px;
 }
 
-/* Action Cell & Buttons Mobile Fixes */
+/* Action Cell Layout */
 .action-cell {
   white-space: nowrap;
+  width: 120px;
 }
 
 .action-btns {
@@ -140,7 +139,7 @@ button {
   cursor: pointer;
   font-weight: 500;
   transition: background 0.2s;
-  touch-action: manipulation; /* Prevents touch delay on iOS */
+  touch-action: manipulation; /* Removes 300ms delay on iOS touch screens */
 }
 
 .btn-primary {
@@ -157,6 +156,8 @@ button {
   color: #2d3748;
   padding: 6px 12px;
   font-size: 13px;
+  display: inline-block !important; /* Prevents iOS Safari from hiding standard button elements */
+  visibility: visible !important;
 }
 
 .btn-edit:hover {
@@ -174,7 +175,18 @@ button {
   background: #feb2b2;
 }
 
-/* Responsive Rules for Small Devices */
+/* Tabs */
+.tab-btn {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.tab-btn.active {
+  background: #3182ce;
+  color: white;
+}
+
+/* Mobile & iPhone Responsive Rules */
 @media screen and (max-width: 768px) {
   body {
     padding: 10px;
@@ -189,11 +201,6 @@ button {
   .table-container {
     display: block;
     width: 100%;
-    overflow-x: auto;
-  }
-
-  .action-btns {
-    flex-direction: row;
-    justify-content: flex-start;
+    overflow-x: scroll;
   }
 }

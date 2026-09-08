@@ -47,7 +47,7 @@ async function fetchUserRole(userId) {
     .eq("id", userId)
     .maybeSingle();
 
-  // Normalize and clean role string
+  // Normalize role string safely
   userRole = (data && data.role) ? data.role.toLowerCase().trim() : "staff";
   updateUIState();
 }
@@ -60,7 +60,7 @@ function updateUIState() {
   const adminPanel = document.getElementById("admin-panel");
   const actionHeaders = document.querySelectorAll(".actions-header");
 
-  // ALL logged-in users can edit; only non-logged-in users are "public"
+  // ALL logged-in users (Judge, Clerk, Master Clerk, Staff) can edit/add
   const canEdit = currentUser !== null;
 
   if (currentUser) {
@@ -68,10 +68,8 @@ function updateUIState() {
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "inline-block";
 
-    if (canEdit) {
-      if (adminPanel) adminPanel.style.display = "block";
-    } else {
-      if (adminPanel) adminPanel.style.display = "none";
+    if (adminPanel) {
+      adminPanel.style.display = canEdit ? "block" : "none";
     }
 
     actionHeaders.forEach(el => {
@@ -122,10 +120,15 @@ function updateDashboardStats() {
   const criminalCount = activeCases.filter(c => c.category === "Criminal").length;
   const urgentCount = activeCases.filter(c => calculateDeskTimeDays(c.created_at) > 30).length;
 
-  document.getElementById("stat-total").innerText = activeCases.length;
-  document.getElementById("stat-civil").innerText = civilCount;
-  document.getElementById("stat-criminal").innerText = criminalCount;
-  document.getElementById("stat-urgent").innerText = urgentCount;
+  const statTotal = document.getElementById("stat-total");
+  const statCivil = document.getElementById("stat-civil");
+  const statCriminal = document.getElementById("stat-criminal");
+  const statUrgent = document.getElementById("stat-urgent");
+
+  if (statTotal) statTotal.innerText = activeCases.length;
+  if (statCivil) statCivil.innerText = civilCount;
+  if (statCriminal) statCriminal.innerText = criminalCount;
+  if (statUrgent) statUrgent.innerText = urgentCount;
 }
 
 // Tab Switcher
@@ -138,8 +141,11 @@ function switchTab(tabName, element) {
 
 // Filter and Search Cases
 function filterCases() {
-  const searchTerm = document.getElementById("search-input").value.toLowerCase();
-  const statusFilter = document.getElementById("filter-status").value;
+  const searchInput = document.getElementById("search-input");
+  const filterStatusEl = document.getElementById("filter-status");
+
+  const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+  const statusFilter = filterStatusEl ? filterStatusEl.value : "ALL";
 
   currentlyFilteredCases = allCases.filter(c => {
     const daysOnDesk = calculateDeskTimeDays(c.created_at);
@@ -183,7 +189,7 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
     
-    // Any logged-in user can edit; ONLY Judge can delete
+    // EVERY authenticated user gets Edit permissions; ONLY Judge gets Delete
     const canEdit = currentUser !== null;
     const canDelete = userRole === "judge";
 

@@ -1,199 +1,171 @@
-/* Base Styles */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Court Case Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
 
-body {
-  background-color: #f4f6f8;
-  color: #333;
-  line-height: 1.6;
-  padding: 20px;
-}
+  <div class="container">
+    
+    <!-- Top Navigation Header -->
+    <header>
+      <h1>⚖️ Court Case Tracker</h1>
+      <div class="auth-controls">
+        <span id="user-display">Loading session...</span>
+        <button id="login-btn" class="btn-primary" onclick="openLoginModal()">Login</button>
+        <button id="logout-btn" class="btn-danger" onclick="logout()" style="display: none;">Logout</button>
+      </div>
+    </header>
 
-/* Container */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
+    <!-- Dashboard Metric Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>Total Active Cases</h3>
+        <div class="number" id="stat-total">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Civil Cases</h3>
+        <div class="number" id="stat-civil">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Criminal Cases</h3>
+        <div class="number" id="stat-criminal">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Urgent (>30 Days)</h3>
+        <div class="number" id="stat-urgent">0</div>
+      </div>
+    </div>
 
-/* Header & Auth bar */
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #ffffff;
-  padding: 15px 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  margin-bottom: 20px;
-}
+    <!-- Admin Panel: Add Case -->
+    <div id="admin-panel" style="display: none; background: #ffffff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+      <h2>Add New Case</h2>
+      <form id="add-case-form" onsubmit="handleCreateCase(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+        <input type="text" id="case-num" placeholder="Case Number" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="text" id="title" placeholder="Case Title" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <select id="category" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+          <option value="Civil">Civil</option>
+          <option value="Criminal">Criminal</option>
+        </select>
+        <select id="status" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+          <option value="Pending">Pending</option>
+          <option value="Mention">Mention</option>
+          <option value="Hearing">Hearing</option>
+          <option value="Trial">Trial</option>
+          <option value="Adjourned">Adjourned</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <input type="date" id="hearing-date" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="text" id="details" placeholder="Details / Remarks" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <button type="submit" class="btn-primary" style="grid-column: 1 / -1; width: 100%; padding: 10px;">+ Add Case</button>
+      </form>
+    </div>
 
-.auth-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+    <!-- Controls Row -->
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
+      <div class="tabs" style="display: flex; gap: 5px; flex-wrap: wrap;">
+        <button class="tab-btn active" onclick="switchTab('all', this)">All Active</button>
+        <button class="tab-btn" onclick="switchTab('Civil', this)">Civil</button>
+        <button class="tab-btn" onclick="switchTab('Criminal', this)">Criminal</button>
+        <button class="tab-btn" onclick="switchTab('urgent', this)">Urgent</button>
+        <button class="tab-btn" onclick="switchTab('archived', this)">Archived</button>
+      </div>
+      
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <input type="text" id="search-input" placeholder="Search cases..." onkeyup="filterCases()" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <select id="filter-status" onchange="filterCases()" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+          <option value="ALL">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Mention">Mention</option>
+          <option value="Hearing">Hearing</option>
+          <option value="Trial">Trial</option>
+          <option value="Adjourned">Adjourned</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <button onclick="exportToCSV()" class="btn-primary">📥 Export CSV</button>
+      </div>
+    </div>
 
-/* Stats Cards */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
-}
+    <!-- Responsive Table Wrapper for iOS Safari and Mobile Devices -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Case Number</th>
+            <th>Category</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Days on Desk</th>
+            <th>Next Hearing</th>
+            <th>Details</th>
+            <th class="actions-header" style="display: none;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="cases-body">
+          <tr>
+            <td colspan="8" style="text-align: center;">Loading cases...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-.stat-card {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  text-align: center;
-}
+  </div>
 
-.stat-card h3 {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 5px;
-}
+  <!-- Login Modal -->
+  <div id="login-modal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index: 1000;">
+    <div style="background: white; padding: 25px; border-radius: 8px; width: 320px; max-width: 90%;">
+      <h3>Staff & Judge Login</h3>
+      <form onsubmit="handleLogin(event)" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+        <input type="email" id="email" placeholder="Email" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="password" id="password" placeholder="Password" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button type="button" onclick="closeLoginModal()">Cancel</button>
+          <button type="submit" class="btn-primary">Sign In</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-.stat-card .number {
-  font-size: 28px;
-  font-weight: bold;
-  color: #2c3e50;
-}
+  <!-- Edit Case Modal -->
+  <div id="edit-modal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index: 1000;">
+    <div style="background: white; padding: 25px; border-radius: 8px; width: 450px; max-width: 90%;">
+      <h3>Edit Case Record</h3>
+      <form onsubmit="handleUpdateCase(event)" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+        <input type="hidden" id="edit-case-id">
+        <input type="text" id="edit-case-num" placeholder="Case Number" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="text" id="edit-title" placeholder="Case Title" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <select id="edit-category" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+          <option value="Civil">Civil</option>
+          <option value="Criminal">Criminal</option>
+        </select>
+        <select id="edit-status" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+          <option value="Pending">Pending</option>
+          <option value="Mention">Mention</option>
+          <option value="Hearing">Hearing</option>
+          <option value="Trial">Trial</option>
+          <option value="Adjourned">Adjourned</option>
+          <option value="Closed">Closed</option>
+          <option value="Dismissed">Dismissed</option>
+          <option value="Struck Out">Struck Out</option>
+          <option value="Convicted">Convicted</option>
+          <option value="Judgment Delivered">Judgment Delivered</option>
+          <option value="Consent Judgment">Consent Judgment</option>
+        </select>
+        <input type="date" id="edit-hearing-date" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <textarea id="edit-details" placeholder="Details / Remarks" rows="3" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button type="button" onclick="closeEditModal()">Cancel</button>
+          <button type="submit" class="btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-/* Table Container for Cross-Platform Horizontal Scroll */
-.table-container,
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS Safari */
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  margin-bottom: 20px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 800px; /* Forces scroll bar on small screens instead of shrinking buttons */
-}
-
-th, td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid #edf2f7;
-}
-
-th {
-  background-color: #f8fafc;
-  font-weight: 600;
-  color: #4a5568;
-}
-
-/* Table Badges */
-.badge-category {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge-civil {
-  background: #ebf8ff;
-  color: #2b6cb0;
-}
-
-.badge-criminal {
-  background: #fff5f5;
-  color: #c53030;
-}
-
-.badge-desk-time {
-  background: #edf2f7;
-  color: #4a5568;
-  padding: 3px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-/* Action Cell & Buttons Mobile Fixes */
-.action-cell {
-  white-space: nowrap;
-}
-
-.action-btns {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  white-space: nowrap;
-}
-
-button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-  touch-action: manipulation; /* Prevents touch delay on iOS */
-}
-
-.btn-primary {
-  background: #3182ce;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2b6cb0;
-}
-
-.btn-edit {
-  background: #edf2f7;
-  color: #2d3748;
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.btn-edit:hover {
-  background: #e2e8f0;
-}
-
-.btn-danger {
-  background: #fed7d7;
-  color: #9b2c2c;
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.btn-danger:hover {
-  background: #feb2b2;
-}
-
-/* Responsive Rules for Small Devices */
-@media screen and (max-width: 768px) {
-  body {
-    padding: 10px;
-  }
-
-  header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .table-container {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-  }
-
-  .action-btns {
-    flex-direction: row;
-    justify-content: flex-start;
-  }
-}
+  <script src="app.js"></script>
+</body>
+</html>
