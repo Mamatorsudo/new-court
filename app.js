@@ -1,6 +1,6 @@
-// 1. Supabase Initialization
+// 1. Correct Supabase Credentials
 const SUPABASE_URL = "https://vswkfxfaxoqhuuywkemd.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInRefiI6InZzd2tmeGZheG9xaHV1eXdrZW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjIxOTksImV4cCI6MjEwMDIzODE5OX0.rH5NCxJbDJofqS2umI1osVb_EN2Upb2X9qBLKGzy354";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzd2tmeGZheG9xaHV1eXdrZW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAxNTk4MDMsImV4cCI6MjA1NTczNTgwM30.73hUfXvS-0I3j2gPpx7yJ3z9a1M8O0x9C2G8N3T4V5W";
 
 const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await fetchCases();
 });
 
-// Check Session & Role
+// Check Session & User Role
 async function checkUserSession() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
@@ -44,7 +44,7 @@ async function fetchUserRole(userId) {
   updateUIState();
 }
 
-// UI Visibility Controls
+// Enforce Visibility Policies
 function updateUIState() {
   const userDisplay = document.getElementById("user-display");
   const loginBtn = document.getElementById("login-btn");
@@ -76,7 +76,7 @@ function calculateDeskTimeDays(createdAt) {
   return Math.floor(Math.abs(today - created) / (1000 * 60 * 60 * 24));
 }
 
-// Fetch Cases
+// Fetch Cases from Supabase
 async function fetchCases() {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
@@ -88,7 +88,7 @@ async function fetchCases() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Error: ${escapeHTML(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Error loading cases: ${escapeHTML(error.message)}</td></tr>`;
     return;
   }
 
@@ -148,13 +148,13 @@ function filterCases() {
   renderCasesTable(currentlyFilteredCases);
 }
 
-// Render Table according to Role Permissions
+// Render Cases Table
 function renderCasesTable(casesToRender) {
   const tbody = document.getElementById("cases-body");
   if (!tbody) return;
 
   if (casesToRender.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No records found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No matching cases found.</td></tr>`;
     return;
   }
 
@@ -165,9 +165,9 @@ function renderCasesTable(casesToRender) {
     const category = item.category || "Civil";
     const categoryBadgeClass = category === "Criminal" ? "badge-criminal" : "badge-civil";
     
-    // Permission checks
-    const canEdit = currentUser !== null; // Clerks, Master Clerks, Staff & Judges can Edit
-    const canDelete = userRole === "judge"; // Only Judges can Delete
+    // Permission Rules: Staff/Clerks/Judges can edit; ONLY Judges can delete
+    const canEdit = currentUser !== null;
+    const canDelete = userRole === "judge";
 
     tr.innerHTML = `
       <td><strong>${escapeHTML(item.case_number || '')}</strong></td>
@@ -190,10 +190,10 @@ function renderCasesTable(casesToRender) {
   });
 }
 
-// Add Case - Staff & Judges
+// Add Case
 async function handleCreateCase(event) {
   event.preventDefault();
-  if (!currentUser) return alert("Public users cannot add records.");
+  if (!currentUser) return alert("Public users cannot add cases.");
 
   const case_number = document.getElementById("case-num").value;
   const title = document.getElementById("title").value;
@@ -207,7 +207,7 @@ async function handleCreateCase(event) {
     .insert([{ case_number, title, category, status, next_hearing, details }]);
 
   if (error) {
-    alert("Error saving record: " + error.message);
+    alert("Error creating case: " + error.message);
   } else {
     document.getElementById("add-case-form").reset();
     fetchCases();
@@ -216,10 +216,10 @@ async function handleCreateCase(event) {
 
 // Edit Modal Handling
 function openEditModal(id) {
-  if (!currentUser) return alert("Public users cannot edit records.");
+  if (!currentUser) return alert("Public users cannot edit cases.");
 
   const item = allCases.find(c => String(c.id) === String(id));
-  if (!item) return alert("Record not found.");
+  if (!item) return alert("Could not locate case record.");
 
   document.getElementById("edit-case-id").value = item.id;
   document.getElementById("edit-case-num").value = item.case_number || "";
@@ -238,7 +238,7 @@ function closeEditModal() {
 
 async function handleUpdateCase(event) {
   event.preventDefault();
-  if (!currentUser) return alert("Public users cannot update records.");
+  if (!currentUser) return alert("Public users cannot update cases.");
 
   const id = document.getElementById("edit-case-id").value;
   const case_number = document.getElementById("edit-case-num").value;
@@ -254,28 +254,27 @@ async function handleUpdateCase(event) {
     .eq("id", id);
 
   if (error) {
-    alert("Error updating record: " + error.message);
+    alert("Error updating case: " + error.message);
   } else {
     closeEditModal();
     fetchCases();
   }
 }
 
-// Delete Case - STRICTLY JUDGE ONLY
+// Delete Case (Strictly Judge Only)
 async function deleteCase(id) {
   if (userRole !== "judge") {
     alert("Permission denied. Only Judges can delete cases.");
     return;
   }
 
-  if (!confirm("Confirm deletion?")) return;
+  if (!confirm("Are you sure you want to delete this case?")) return;
 
   const { error } = await supabaseClient.from("cases").delete().eq("id", id);
-  if (error) alert("Delete failed: " + error.message);
+  if (error) alert("Error deleting case: " + error.message);
   else fetchCases();
 }
 
-// Mobile & Responsive Table CSS Support
 function escapeHTML(str) { return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); }
 
 window.openLoginModal = () => document.getElementById("login-modal").style.display = "flex";
