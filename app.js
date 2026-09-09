@@ -12,10 +12,13 @@ let currentlyFilteredCases = [];
 let currentTab = "all";
 
 const ARCHIVED_STATUSES = [
-  "Closed", "Dismissed", "Struck Out", 
-  "Convicted", "Judgment Delivered", "Consent Judgment"
+  "Closed",
+  "Dismissed",
+  "STRUCK OUT",
+  "CONVICTED",
+  "JUDGMENT DELIVERED",
+  "CONSENT JUDGMENT"
 ];
-
 document.addEventListener("DOMContentLoaded", async () => {
   await checkUserSession();
   await fetchCases();
